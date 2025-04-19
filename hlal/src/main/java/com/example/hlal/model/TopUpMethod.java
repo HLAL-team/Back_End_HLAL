@@ -18,8 +18,4 @@ public class TopUpMethod {
 
     @Column(name = "name", length = 255)
     private String name;
-
-    @ManyToOne
-    @JoinColumn(name = "transaction_type_id")
-    private TransactionType transactionType;
 }

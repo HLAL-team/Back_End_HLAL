@@ -6,9 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
-import java.security.Timestamp;
 import java.time.LocalDateTime;
-import java.util.Date;
 
 @Data
 @Entity
@@ -27,12 +25,16 @@ public class Transactions {
     private Wallets wallet;
 
     @ManyToOne
-    @JoinColumn(name = "recipient_wallet_id")
+    @JoinColumn(name = "recipient_wallet_id", nullable = true)
     private Wallets recipientWallet;
 
     @ManyToOne
     @JoinColumn(name = "transaction_type_id")
     private TransactionType transactionType;
+
+    @ManyToOne
+    @JoinColumn(name = "top_up_method_id", nullable = true)
+    private TopUpMethod topUpMethod;
 
     @Column(name = "amount", precision = 12, scale = 2)
     private BigDecimal amount;

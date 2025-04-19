@@ -13,4 +13,5 @@ public class TransactionsResponse {
     private String recipient;
     private String description;
     private LocalDateTime transactionDate;
+    private String transactionDateFormatted;
 }

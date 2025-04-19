@@ -9,6 +9,4 @@ import java.util.Optional;
 
 @Repository
 public interface TopUpMethodRepository extends JpaRepository<TopUpMethod, Long> {
-    List<TopUpMethod> findByTransactionTypeId(Long transactionTypeId);
-    Optional<TopUpMethod> findByName(String name);
 }

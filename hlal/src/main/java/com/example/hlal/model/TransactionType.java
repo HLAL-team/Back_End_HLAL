@@ -25,9 +25,4 @@ public class TransactionType {
     @JoinColumn(name = "transaction_id")
     private Transactions transaction;
 
-    @OneToMany(mappedBy = "transactionType")
-    private List<Transactions> transactions;
-
-    @OneToMany(mappedBy = "transactionType")
-    private List<TopUpMethod> topUpMethods;
 }
