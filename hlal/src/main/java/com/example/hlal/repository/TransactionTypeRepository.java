@@ -1,12 +1,12 @@
 package com.example.hlal.repository;
 
-import com.example.hlal.model.Wallets;
+import com.example.hlal.model.TransactionType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
 
 @Repository
-public interface WalletsRepository extends JpaRepository<Wallets, Long> {
-    public Optional<Wallets> findByAccountNumber(String accountNumber);
+public interface TransactionTypeRepository extends JpaRepository<TransactionType, Long> {
+    Optional<TransactionType> findByName(String name);
 }

@@ -5,6 +5,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
+import java.security.Timestamp;
 import java.time.LocalDateTime;
 import java.util.Date;
 
@@ -14,22 +16,29 @@ import java.util.Date;
 @AllArgsConstructor
 @Table(name = "transactions")
 public class Transactions {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "transactions_id")
     private Long id;
 
-    private Long wallet_id;//foreignkey dari wallets OneToManny
+    @ManyToOne
+    @JoinColumn(name = "wallet_id")
+    private Wallets wallet;
 
-    @Column(name = "transaction_type", length = 20)
-    private String  transactionType;
+    @ManyToOne
+    @JoinColumn(name = "recipient_wallet_id")
+    private Wallets recipientWallet;
 
-    @Column(name = "amount", length = 12)
-    private Integer amount;
+    @ManyToOne
+    @JoinColumn(name = "transaction_type_id")
+    private TransactionType transactionType;
 
-    private Long recipient_wallet_id; //foreignkey dari wallets OneToManny
+    @Column(name = "amount", precision = 12, scale = 2)
+    private BigDecimal amount;
 
-    @Column(name = "transaction_date", nullable = false)
-    private LocalDateTime transaction_date;
+    @Column(name = "transaction_date")
+    private LocalDateTime transactionDate;
 
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;

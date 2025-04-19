@@ -6,7 +6,9 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -25,8 +27,8 @@ public class Wallets {
     @Column(name = "account_number", nullable = false, length = 10)
     private String accountNumber;
 
-    @Column(name = "balance", nullable = false, length = 12)
-    private Integer balance;
+    @Column(name = "balance", nullable = false, precision = 12, scale = 2)
+    private BigDecimal balance;
 
     @Column(name = "created_at", updatable = false, nullable = false)
     private LocalDateTime createdAt;
@@ -34,5 +36,9 @@ public class Wallets {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    @OneToMany(mappedBy = "wallet")
+    private List<Transactions> transactions;
 
+    @OneToMany(mappedBy = "recipientWallet")
+    private List<Transactions> receivedTransactions;
 }

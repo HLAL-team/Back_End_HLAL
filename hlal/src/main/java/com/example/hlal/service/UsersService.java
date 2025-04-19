@@ -9,6 +9,7 @@ import com.example.hlal.repository.WalletsRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -43,7 +44,7 @@ public class UsersService {
             accountNumber = generateAccountNumber();
         }while(this.walletsRepository.findByAccountNumber(wallets.getAccountNumber()).isPresent());
         wallets.setAccountNumber(accountNumber);
-        wallets.setBalance(0);
+        wallets.setBalance(BigDecimal.valueOf(0));
         wallets.setCreatedAt(LocalDateTime.now());
         wallets.setUpdatedAt(LocalDateTime.now());
         this.walletsRepository.save(wallets);
