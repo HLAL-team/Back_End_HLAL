@@ -21,12 +21,12 @@ public class Transactions {
     private Long wallet_id;//foreignkey dari wallets OneToManny
 
     @Column(name = "transaction_type", length = 20)
-    private String  transaction_type;
+    private String  transactionType;
 
     @Column(name = "amount", length = 12)
     private Integer amount;
 
-    private Long recipient_wallet_id;
+    private Long recipient_wallet_id; //foreignkey dari wallets OneToManny
 
     @Column(name = "transaction_date", nullable = false)
     private LocalDateTime transaction_date;

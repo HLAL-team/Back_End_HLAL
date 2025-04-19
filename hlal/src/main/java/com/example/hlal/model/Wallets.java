@@ -7,7 +7,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
-import java.util.Date;
 
 @Data
 @NoArgsConstructor
@@ -19,17 +18,21 @@ public class Wallets {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Long user_id; //foreign key untuk users OnetoOne
+    @OneToOne
+    @JoinColumn(name = "user_id", unique = true)
+    private Users users; //foreign key untuk users OnetoOne
 
-    @Column(name = "account_number", nullable = false, length = 20)
-    private String account_number;
+    @Column(name = "account_number", nullable = false, length = 10)
+    private String accountNumber;
 
     @Column(name = "balance", nullable = false, length = 12)
     private Integer balance;
 
     @Column(name = "created_at", updatable = false, nullable = false)
-    private LocalDateTime created_at;
+    private LocalDateTime createdAt;
 
     @Column(name = "updated_at")
-    private LocalDateTime updated_at;
+    private LocalDateTime updatedAt;
+
+
 }

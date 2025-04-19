@@ -31,6 +31,9 @@ public class Users {
     private String password;
 
     @Column(name = "avatar_url", columnDefinition = "TEXT")
-    private String avatar_url;
+    private String avatarUrl;
+
+    @OneToOne(mappedBy = "users", cascade = CascadeType.ALL)
+    private Wallets wallets;
 
 }
