@@ -46,7 +46,7 @@ public class TransactionsController {
         }
     }
 
-    @GetMapping
+    @GetMapping("/transaction")
     public ResponseEntity<Map<String, Object>> getTransactions(
             @RequestParam Long walletId,
             @RequestParam(required = false) String keyword,
@@ -56,6 +56,7 @@ public class TransactionsController {
             @RequestParam(defaultValue = "100") int size,
             @RequestParam(required = false) Integer limit
     ) {
+        System.out.println("WEW");
         try {
             Map<String, Object> result = transactionsService.getMyTransactions(
                     walletId, keyword, sortBy, order, page, size, limit
