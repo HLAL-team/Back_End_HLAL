@@ -3,6 +3,7 @@ package com.example.hlal.controller;
 import com.example.hlal.dto.request.TransactionsRequest;
 import com.example.hlal.dto.response.TransactionsResponse;
 import com.example.hlal.service.TransactionsService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,15 +21,16 @@ public class TransactionsController {
     private final TransactionsService transactionsService;
 
     @PostMapping("/create")
-    public ResponseEntity<Map<String, Object>> createTransaction(@RequestBody TransactionsRequest request) {
+    public ResponseEntity<Map<String, Object>> createTransaction(@RequestBody TransactionsRequest request,
+                                                                 HttpServletRequest httpRequest) {
         Map<String, Object> response = new LinkedHashMap<>();
 
         try {
-            TransactionsResponse result = transactionsService.createTransaction(request);
+            TransactionsResponse result = transactionsService.createTransaction(request, httpRequest);
 
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd MMMM yyyy HH:mm", new Locale("id", "ID"));
             String formattedDate = result.getTransactionDate().format(formatter);
-            result.setTransactionDateFormatted(formattedDate); // pastikan di DTO sudah ada
+            result.setTransactionDateFormatted(formattedDate);
 
             response.put("status", true);
             response.put("code", 201);
@@ -46,24 +48,43 @@ public class TransactionsController {
         }
     }
 
-    @GetMapping("/transaction")
-    public ResponseEntity<Map<String, Object>> getTransactions(
-            @RequestParam Long walletId,
+    @GetMapping
+    public ResponseEntity<Map<String, Object>> getMyTransactions(
             @RequestParam(required = false) String keyword,
-            @RequestParam(defaultValue = "date") String sortBy,
+            @RequestParam(defaultValue = "transactionDate") String sortBy,
             @RequestParam(defaultValue = "desc") String order,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "100") int size,
-            @RequestParam(required = false) Integer limit
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            HttpServletRequest httpRequest
     ) {
-        System.out.println("WEW");
         try {
             Map<String, Object> result = transactionsService.getMyTransactions(
-                    walletId, keyword, sortBy, order, page, size, limit
+                    keyword, sortBy, order, page, size, httpRequest
             );
             int statusCode = (int) result.getOrDefault("code", 200);
             return ResponseEntity.status(statusCode).body(result);
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new LinkedHashMap<>();
+            errorResponse.put("status", false);
+            errorResponse.put("code", 500);
+            errorResponse.put("message", "Error fetching transactions: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
+    }
 
+    @GetMapping("/range")
+    public ResponseEntity<Map<String, Object>> getTransactionsByTimeRange(
+            @RequestParam String type,
+            @RequestParam int year,
+            @RequestParam(required = false) Integer month,
+            @RequestParam(required = false) Integer week,
+            @RequestParam(required = false) Integer quarter,
+            HttpServletRequest httpRequest
+    ) {
+        try {
+            Map<String, Object> result = transactionsService.getTransactionsByTimeRange(type, year, month, week, quarter, httpRequest);
+            int statusCode = (int) result.getOrDefault("code", 200);
+            return ResponseEntity.status(statusCode).body(result);
         } catch (Exception e) {
             Map<String, Object> errorResponse = new LinkedHashMap<>();
             errorResponse.put("status", false);

@@ -2,25 +2,18 @@ package com.example.hlal.service;
 
 import com.example.hlal.dto.request.TransactionsRequest;
 import com.example.hlal.dto.response.TransactionsResponse;
-import com.example.hlal.model.TopUpMethod;
-import com.example.hlal.model.Transactions;
-import com.example.hlal.model.Wallets;
-import com.example.hlal.repository.TransactionsRepository;
-import com.example.hlal.repository.WalletsRepository;
-import org.springframework.stereotype.Service;
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.Comparator;
-import java.util.List;
-import java.util.stream.Collectors;
-import com.example.hlal.model.TransactionType;
-import com.example.hlal.repository.TransactionTypeRepository;
-import com.example.hlal.repository.TopUpMethodRepository;
-import java.util.*;
+import com.example.hlal.model.*;
+import com.example.hlal.repository.*;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+import java.time.*;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -30,201 +23,222 @@ public class TransactionsService {
     private final WalletsRepository walletsRepository;
     private final TransactionTypeRepository transactionTypeRepository;
     private final TopUpMethodRepository topUpMethodRepository;
+    private final JWTService jwtService;
 
     @Transactional
-    public TransactionsResponse createTransaction(TransactionsRequest request) {
-        try {
-            Wallets senderWallet = walletsRepository.findById(request.getSenderWalletId())
-                    .orElseThrow(() -> new RuntimeException("Sender wallet not found"));
-            TransactionType transactionType = transactionTypeRepository.findById(request.getTransactionTypeId())
-                    .orElseThrow(() -> new RuntimeException("Transaction type not found"));
+    public TransactionsResponse createTransaction(TransactionsRequest request, HttpServletRequest httpRequest) {
+        String jwt = jwtService.extractToken(httpRequest);
+        String userEmail = jwtService.extractUsername(jwt);
 
-            Transactions transaction = new Transactions();
-            transaction.setWallet(senderWallet);
-            transaction.setTransactionType(transactionType);
-            transaction.setAmount(request.getAmount());
-            transaction.setDescription(request.getDescription());
-            transaction.setTransactionDate(LocalDateTime.now());
+        Wallets senderWallet = walletsRepository.findByUsersEmail(userEmail)
+                .orElseThrow(() -> new RuntimeException("Sender wallet not found"));
 
-            if (transactionType.getId() == 1) { // TOP UP
-                if (request.getTopUpMethodId() == null) {
-                    throw new RuntimeException("Top up method is required for top up transactions");
-                }
+        TransactionType transactionType = transactionTypeRepository.findById(request.getTransactionTypeId())
+                .orElseThrow(() -> new RuntimeException("Transaction type not found"));
 
-                TopUpMethod topUpMethod = topUpMethodRepository.findById(request.getTopUpMethodId())
-                        .orElseThrow(() -> new RuntimeException("Top up method not found"));
+        Transactions transaction = new Transactions();
+        transaction.setWallet(senderWallet);
+        transaction.setTransactionType(transactionType);
+        transaction.setAmount(request.getAmount());
+        transaction.setDescription(request.getDescription());
+        transaction.setTransactionDate(LocalDateTime.now());
 
-                transaction.setTopUpMethod(topUpMethod);
-                transaction.setRecipientWallet(null); // gak perlu recipient
-
-                senderWallet.setBalance(senderWallet.getBalance().add(request.getAmount()));
-                walletsRepository.save(senderWallet);
-            } else if (transactionType.getId() == 2) { // TRANSFER
-                if (request.getRecipientWalletId() == null) {
-                    throw new RuntimeException("Recipient wallet is required for transfer transactions");
-                }
-
-                Wallets recipientWallet = walletsRepository.findById(request.getRecipientWalletId())
-                        .orElseThrow(() -> new RuntimeException("Recipient wallet not found"));
-
-                if (senderWallet.getBalance().compareTo(request.getAmount()) < 0) {
-                    throw new RuntimeException("Insufficient balance");
-                }
-
-                transaction.setRecipientWallet(recipientWallet);
-                transaction.setTopUpMethod(null); // gak perlu top up method
-
-                senderWallet.setBalance(senderWallet.getBalance().subtract(request.getAmount()));
-                recipientWallet.setBalance(recipientWallet.getBalance().add(request.getAmount()));
-                walletsRepository.save(senderWallet);
-                walletsRepository.save(recipientWallet);
-            } else {
-                throw new RuntimeException("Unsupported transaction type");
+        if (transactionType.getId() == 1) { // TOP UP
+            if (request.getTopUpMethodId() == null) {
+                throw new RuntimeException("Top up method is required for top up transactions");
             }
 
-            transactionsRepository.save(transaction);
+            TopUpMethod topUpMethod = topUpMethodRepository.findById(request.getTopUpMethodId())
+                    .orElseThrow(() -> new RuntimeException("Top up method not found"));
 
-            // Format tanggal ke "18 April 2025 19:00"
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd MMMM yyyy HH:mm", new Locale("id", "ID"));
-            String formattedDate = transaction.getTransactionDate().format(formatter);
+            transaction.setTopUpMethod(topUpMethod);
+            transaction.setRecipientWallet(null);
 
-            // Build response
-            TransactionsResponse response = new TransactionsResponse();
-            response.setTransactionId(transaction.getId());
-            response.setTransactionType(transactionType.getName());
-            response.setAmount(transaction.getAmount());
-            response.setSender(senderWallet.getUsers().getFullname());
-            response.setRecipient(transaction.getRecipientWallet() != null
-                    ? transaction.getRecipientWallet().getUsers().getFullname()
-                    : null);
-            response.setDescription(transaction.getDescription());
-            response.setTransactionDate(transaction.getTransactionDate());
-            response.setTransactionDateFormatted(formattedDate);
+            senderWallet.setBalance(senderWallet.getBalance().add(request.getAmount()));
+            walletsRepository.save(senderWallet);
+        } else if (transactionType.getId() == 2) { // TRANSFER
+            if (request.getRecipientWalletId() == null) {
+                throw new RuntimeException("Recipient wallet is required for transfer transactions");
+            }
 
-            return response;
+            Wallets recipientWallet = walletsRepository.findById(request.getRecipientWalletId())
+                    .orElseThrow(() -> new RuntimeException("Recipient wallet not found"));
 
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to create transaction: " + e.getMessage(), e);
+            if (senderWallet.getBalance().compareTo(request.getAmount()) < 0) {
+                throw new RuntimeException("Insufficient balance");
+            }
+
+            transaction.setRecipientWallet(recipientWallet);
+            transaction.setTopUpMethod(null);
+
+            senderWallet.setBalance(senderWallet.getBalance().subtract(request.getAmount()));
+            recipientWallet.setBalance(recipientWallet.getBalance().add(request.getAmount()));
+            walletsRepository.save(senderWallet);
+            walletsRepository.save(recipientWallet);
+        } else {
+            throw new RuntimeException("Unsupported transaction type");
         }
+
+        transactionsRepository.save(transaction);
+
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd MMMM yyyy HH:mm", new Locale("id", "ID"));
+        String formattedDate = transaction.getTransactionDate().format(formatter);
+
+        TransactionsResponse response = new TransactionsResponse();
+        response.setTransactionId(transaction.getId());
+        response.setTransactionType(transactionType.getName());
+        response.setAmount(transaction.getAmount());
+        response.setSender(senderWallet.getUsers().getFullname());
+        response.setRecipient(transaction.getRecipientWallet() != null
+                ? transaction.getRecipientWallet().getUsers().getFullname()
+                : null);
+        response.setDescription(transaction.getDescription());
+        response.setTransactionDate(transaction.getTransactionDate());
+        response.setTransactionDateFormatted(formattedDate);
+
+        return response;
     }
 
-    public Map<String, Object> getMyTransactions(Long walletId, String keyword, String sortBy, String order,
-                                                 int page, int size, Integer limit) {
-        Map<String, Object> response = new HashMap<>();
+    public Map<String, Object> getMyTransactions(
+            String search,
+            String sortBy,
+            String sortDir,
+            Integer page,
+            Integer limit,
+            HttpServletRequest httpRequest) {
 
-        try {
-            List<Transactions> allTransactions = transactionsRepository.findAll();
+        String jwt = jwtService.extractToken(httpRequest);
+        String userEmail = jwtService.extractUsername(jwt);
+        Wallets wallet = walletsRepository.findByUsersEmail(userEmail)
+                .orElseThrow(() -> new RuntimeException("Wallet not found"));
 
-            // Filter by walletId
-            allTransactions = allTransactions.stream()
-                    .filter(tx -> tx.getWallet().getId().equals(walletId))
-                    .collect(Collectors.toList());
+        List<Transactions> transactions = transactionsRepository.findByWalletId(wallet.getId());
 
-            // Filter keyword
-            String lowerKeyword = keyword != null ? keyword.toLowerCase() : null;
-            List<Transactions> filtered = allTransactions.stream().filter(tx -> {
-                if (lowerKeyword == null || lowerKeyword.isEmpty()) return true;
+        List<TransactionsResponse> filtered = transactions.stream()
+                .filter(tx -> {
+                    if (search == null || search.isEmpty()) return true;
+                    return tx.getDescription().toLowerCase().contains(search.toLowerCase()) ||
+                            tx.getTransactionType().getName().toLowerCase().contains(search.toLowerCase()) ||
+                            (tx.getRecipientWallet() != null &&
+                                    tx.getRecipientWallet().getUsers().getFullname().toLowerCase().contains(search.toLowerCase()));
+                })
+                .map(tx -> {
+                    TransactionsResponse res = new TransactionsResponse();
+                    res.setTransactionId(tx.getId());
+                    res.setTransactionType(tx.getTransactionType().getName());
+                    res.setAmount(tx.getAmount());
+                    res.setSender(tx.getWallet().getUsers().getFullname());
+                    res.setRecipient(tx.getRecipientWallet() != null ? tx.getRecipientWallet().getUsers().getFullname() : null);
+                    res.setDescription(tx.getDescription());
+                    res.setTransactionDate(tx.getTransactionDate());
+                    res.setTransactionDateFormatted(tx.getTransactionDate().format(DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm")));
+                    return res;
+                })
+                .collect(Collectors.toList());
 
-                String description = Optional.ofNullable(tx.getDescription()).orElse("").toLowerCase();
-                String amount = tx.getAmount() != null ? tx.getAmount().toPlainString() : "";
-                String transactionType = tx.getTransactionType() != null ? tx.getTransactionType().getName().toLowerCase() : "";
-                String sender = tx.getWallet() != null && tx.getWallet().getUsers() != null
-                        ? tx.getWallet().getUsers().getFullname().toLowerCase() : "";
-                String recipient = tx.getRecipientWallet() != null && tx.getRecipientWallet().getUsers() != null
-                        ? tx.getRecipientWallet().getUsers().getFullname().toLowerCase() : "";
+        Comparator<TransactionsResponse> comparator = Comparator.comparing(TransactionsResponse::getTransactionDate);
+        if ("desc".equalsIgnoreCase(sortDir)) comparator = comparator.reversed();
+        filtered.sort(comparator);
 
-                return description.contains(lowerKeyword) ||
-                        amount.contains(lowerKeyword) ||
-                        transactionType.contains(lowerKeyword) ||
-                        sender.contains(lowerKeyword) ||
-                        recipient.contains(lowerKeyword);
-            }).collect(Collectors.toList());
-
-            // Sort
-            filtered.sort((tx1, tx2) -> {
-                int result;
-                switch (sortBy.toLowerCase()) {
-                    case "amount":
-                        result = tx1.getAmount().compareTo(tx2.getAmount());
-                        break;
-                    case "description":
-                        result = Optional.ofNullable(tx1.getDescription()).orElse("")
-                                .compareToIgnoreCase(Optional.ofNullable(tx2.getDescription()).orElse(""));
-                        break;
-                    case "recipient":
-                        String r1 = tx1.getRecipientWallet() != null && tx1.getRecipientWallet().getUsers() != null
-                                ? tx1.getRecipientWallet().getUsers().getFullname() : "";
-                        String r2 = tx2.getRecipientWallet() != null && tx2.getRecipientWallet().getUsers() != null
-                                ? tx2.getRecipientWallet().getUsers().getFullname() : "";
-                        result = r1.compareToIgnoreCase(r2);
-                        break;
-                    case "transactiontype":
-                        String t1 = tx1.getTransactionType() != null ? tx1.getTransactionType().getName() : "";
-                        String t2 = tx2.getTransactionType() != null ? tx2.getTransactionType().getName() : "";
-                        result = t1.compareToIgnoreCase(t2);
-                        break;
-                    case "date":
-                    default:
-                        result = tx1.getTransactionDate().compareTo(tx2.getTransactionDate());
-                        break;
-                }
-                return "desc".equalsIgnoreCase(order) ? -result : result;
-            });
-
-            // Pagination
-            int fromIndex = page * size;
-            int toIndex = Math.min(fromIndex + size, filtered.size());
-            if (fromIndex >= filtered.size()) {
-                response.put("status", true);
-                response.put("code", 201);
-                response.put("data", Collections.emptyList());
-                return response;
-            }
-
-            List<Transactions> paginated = filtered.subList(fromIndex, toIndex);
-
-            // Apply limit only if provided
-            if (limit != null && limit > 0 && limit < paginated.size()) {
-                paginated = paginated.subList(0, limit);
-            }
-
-
-            // Final response list
-            List<Map<String, Object>> data = paginated.stream().map(tx -> {
-                Map<String, Object> item = new LinkedHashMap<>();
-
-                String name = tx.getTransactionType().getId() == 1
-                        ? tx.getWallet().getUsers().getFullname()
-                        : tx.getRecipientWallet() != null
-                        ? tx.getRecipientWallet().getUsers().getFullname()
-                        : "-";
-
-                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm - dd MMMM yyyy", new Locale("en"));
-                String formattedDate = tx.getTransactionDate().format(formatter);
-
-                item.put("transaction_id", tx.getId());
-                item.put("date", formattedDate);
-                item.put("type", tx.getTransactionType().getName());
-                item.put("from_to", name);
-                item.put("notes", tx.getDescription());
-                item.put("amount", tx.getAmount());
-
-                return item;
-            }).collect(Collectors.toList());
-
-            response.put("status", true);
-            response.put("code", 201);
-            response.put("totalData", filtered.size());
-            response.put("data", data);
-            return response;
-
-        } catch (Exception e) {
-            response.put("status", false);
-            response.put("code", 500);
-            response.put("message", "Failed to get transactions: " + e.getMessage());
-            return response;
+        if (filtered.isEmpty()) {
+            return Map.of(
+                    "status", false,
+                    "code", 404,
+                    "message", "Data tidak ditemukan.",
+                    "totalData", 0,
+                    "data", Collections.emptyList()
+            );
         }
+
+        int totalData = filtered.size();
+        int fromIndex = Math.min((page - 1) * limit, totalData);
+        int toIndex = Math.min(fromIndex + limit, totalData);
+        List<TransactionsResponse> paginated = filtered.subList(fromIndex, toIndex);
+
+        return Map.of(
+                "status", true,
+                "code", 200,
+                "message", "Data berhasil diambil",
+                "totalData", totalData,
+                "data", paginated
+        );
     }
 
+    public Map<String, Object> getTransactionsByTimeRange(String type, Integer year, Integer month, Integer week, Integer quarter, HttpServletRequest httpRequest) {
+        String jwt = jwtService.extractToken(httpRequest);
+        String userEmail = jwtService.extractUsername(jwt);
+        Wallets wallet = walletsRepository.findByUsersEmail(userEmail)
+                .orElseThrow(() -> new RuntimeException("Wallet not found"));
 
+        LocalDateTime start, end;
+
+        switch (type.toLowerCase()) {
+            case "month":
+                if (month == null || year == null)
+                    throw new IllegalArgumentException("Month and year are required");
+                start = LocalDateTime.of(year, month, 1, 0, 0);
+                end = start.withDayOfMonth(start.toLocalDate().lengthOfMonth()).withHour(23).withMinute(59).withSecond(59);
+                break;
+            case "week":
+                if (week == null || month == null || year == null)
+                    throw new IllegalArgumentException("Week, month, and year are required");
+                LocalDate firstDayOfMonth = LocalDate.of(year, month, 1);
+                LocalDate firstWeekStart = firstDayOfMonth.with(DayOfWeek.MONDAY);
+                start = firstWeekStart.plusWeeks(week - 1).atStartOfDay();
+                end = start.plusDays(6).withHour(23).withMinute(59).withSecond(59);
+                break;
+            case "quarter":
+                if (quarter == null || year == null)
+                    throw new IllegalArgumentException("Quarter and year are required");
+                int startMonth = (quarter - 1) * 3 + 1;
+                start = LocalDateTime.of(year, startMonth, 1, 0, 0);
+                end = start.plusMonths(2).withDayOfMonth(start.plusMonths(2).toLocalDate().lengthOfMonth()).withHour(23).withMinute(59).withSecond(59);
+                break;
+            default:
+                throw new IllegalArgumentException("Invalid type: must be 'month', 'week', or 'quarter'");
+        }
+
+        List<Transactions> transactions = transactionsRepository.findByWalletIdAndTransactionDateBetween(wallet.getId(), start, end);
+
+        if (transactions.isEmpty()) {
+            return Map.of(
+                    "status", false,
+                    "code", 404,
+                    "message", "Data tidak ditemukan"
+            );
+        }
+
+        BigDecimal totalIncome = transactions.stream()
+                .filter(tx -> tx.getTransactionType().getId() == 1)
+                .map(Transactions::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal totalOutcome = transactions.stream()
+                .filter(tx -> tx.getTransactionType().getId() == 2)
+                .map(Transactions::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        List<TransactionsResponse> responseList = transactions.stream().map(tx -> {
+            TransactionsResponse res = new TransactionsResponse();
+            res.setTransactionId(tx.getId());
+            res.setTransactionType(tx.getTransactionType().getName());
+            res.setAmount(tx.getAmount());
+            res.setSender(tx.getWallet().getUsers().getFullname());
+            res.setRecipient(tx.getRecipientWallet() != null ? tx.getRecipientWallet().getUsers().getFullname() : null);
+            res.setDescription(tx.getDescription());
+            res.setTransactionDate(tx.getTransactionDate());
+            res.setTransactionDateFormatted(tx.getTransactionDate().format(DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm")));
+            return res;
+        }).collect(Collectors.toList());
+
+        return Map.of(
+                "status", true,
+                "code", 200,
+                "message", "Data berhasil diambil",
+                "totalData", responseList.size(),
+                "totalIncome", totalIncome,
+                "totalOutcome", totalOutcome,
+                "data", responseList
+        );
+    }
 }
