@@ -53,6 +53,7 @@ public class UsersService {
         user.setEmail(registerRequest.getEmail());
         user.setUsername(registerRequest.getUsername());
         user.setFullname(registerRequest.getFullname());
+        user.setPhoneNumber(registerRequest.getPhoneNumber());
 //        user.setPassword(registerRequest.getPassword());
         user.setPassword(passwordEncoder.encode(registerRequest.getPassword()));
 

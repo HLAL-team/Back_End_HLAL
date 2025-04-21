@@ -1,0 +1,17 @@
+package com.example.hlal.repository;
+
+import com.example.hlal.model.FavoriteAccount;
+import com.example.hlal.model.Users;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+import java.util.Optional;
+
+@Repository
+public interface FavoriteAccountRepository extends JpaRepository<FavoriteAccount, Long> {
+    Optional<FavoriteAccount> findByUserAndFavoriteUser(Users user, Users favoriteUser);
+    List<FavoriteAccount> findByUser(Users user);
+    boolean existsByUserAndFavoriteUser(Users user, Users favoriteUser);
+}
+

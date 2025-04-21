@@ -1,6 +1,8 @@
 package com.example.hlal.controller;
 
+import com.example.hlal.dto.request.FavoriteAccountRequest;
 import com.example.hlal.dto.request.TransactionsRequest;
+import com.example.hlal.dto.response.FavoriteAccountResponse;
 import com.example.hlal.dto.response.TransactionsResponse;
 import com.example.hlal.service.TransactionsService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -93,4 +95,75 @@ public class TransactionsController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
         }
     }
+
+    @PostMapping("/favorite")
+    public ResponseEntity<Map<String, Object>> addFavoriteAccount(
+            @RequestBody FavoriteAccountRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        Map<String, Object> response = new LinkedHashMap<>();
+
+        try {
+            FavoriteAccountResponse result = transactionsService.addFavoriteAccount(request, httpRequest);
+
+            response.put("status", true);
+            response.put("code", 201);
+            response.put("data", result);
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+
+        } catch (RuntimeException ex) {
+            response.put("timestamp", LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd MMMM yyyy HH:mm", new Locale("id", "ID"))));
+            response.put("status", false);
+            response.put("code", 400);
+            response.put("error", "Bad Request");
+            response.put("message", ex.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        }
+    }
+
+    @GetMapping("/favorite")
+    public ResponseEntity<Map<String, Object>> getFavoriteAccounts(HttpServletRequest httpRequest) {
+        Map<String, Object> response = new LinkedHashMap<>();
+        try {
+            List<FavoriteAccountResponse> favorites = transactionsService.getFavoriteAccounts(httpRequest);
+            response.put("status", true);
+            response.put("code", 200);
+            response.put("data", favorites);
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            response.put("timestamp", LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd MMMM yyyy HH:mm", new Locale("id", "ID"))));
+            response.put("status", false);
+            response.put("code", 500);
+            response.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+
+    @DeleteMapping("/favorite")
+    public ResponseEntity<Map<String, Object>> deleteFavoriteAccount(
+            @RequestParam Long favoriteUserId,
+            HttpServletRequest httpRequest
+    ) {
+        Map<String, Object> response = new LinkedHashMap<>();
+
+        try {
+            transactionsService.deleteFavoriteAccount(favoriteUserId, httpRequest);
+
+            response.put("status", true);
+            response.put("code", 200);
+            response.put("message", "Favorite account deleted successfully");
+            return ResponseEntity.ok(response);
+
+        } catch (RuntimeException ex) {
+            response.put("timestamp", LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd MMMM yyyy HH:mm", new Locale("id", "ID"))));
+            response.put("status", false);
+            response.put("code", 400);
+            response.put("error", "Bad Request");
+            response.put("message", ex.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        }
+    }
+
+
+
 }

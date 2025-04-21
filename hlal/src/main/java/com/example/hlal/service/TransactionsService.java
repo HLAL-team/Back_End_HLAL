@@ -1,6 +1,8 @@
 package com.example.hlal.service;
 
+import com.example.hlal.dto.request.FavoriteAccountRequest;
 import com.example.hlal.dto.request.TransactionsRequest;
+import com.example.hlal.dto.response.FavoriteAccountResponse;
 import com.example.hlal.dto.response.TransactionsResponse;
 import com.example.hlal.model.*;
 import com.example.hlal.repository.*;
@@ -23,6 +25,8 @@ public class TransactionsService {
     private final WalletsRepository walletsRepository;
     private final TransactionTypeRepository transactionTypeRepository;
     private final TopUpMethodRepository topUpMethodRepository;
+    private final UsersRepository usersRepository;
+    private final FavoriteAccountRepository favoriteAccountRepository;
     private final JWTService jwtService;
 
     @Transactional
@@ -245,4 +249,73 @@ public class TransactionsService {
                 "data", responseList
         );
     }
+
+    public FavoriteAccountResponse addFavoriteAccount(FavoriteAccountRequest request, HttpServletRequest httpRequest) {
+        try {
+            String email = jwtService.extractUsername(jwtService.extractToken(httpRequest));
+            Users currentUser = usersRepository.findByEmail(email)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            Users favoriteUser = usersRepository.findById(request.getFavoriteUserId())
+                    .orElseThrow(() -> new RuntimeException("Favorite user not found"));
+
+            if (favoriteAccountRepository.existsByUserAndFavoriteUser(currentUser, favoriteUser)) {
+                throw new RuntimeException("Favorite already exists");
+            }
+
+            FavoriteAccount favoriteAccount = new FavoriteAccount();
+            favoriteAccount.setUser(currentUser);
+            favoriteAccount.setFavoriteUser(favoriteUser);
+            favoriteAccount.setCreatedAt(LocalDateTime.now());
+            favoriteAccountRepository.save(favoriteAccount);
+
+            return new FavoriteAccountResponse(
+                    favoriteAccount.getId(),
+                    favoriteUser.getId(),
+                    favoriteUser.getFullname(),
+                    favoriteUser.getPhoneNumber()
+            );
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to add favorite account: " + e.getMessage());
+        }
+    }
+
+    public List<FavoriteAccountResponse> getFavoriteAccounts(HttpServletRequest httpRequest) {
+        try {
+            String email = jwtService.extractUsername(jwtService.extractToken(httpRequest));
+            Users currentUser = usersRepository.findByEmail(email)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            List<FavoriteAccount> favorites = favoriteAccountRepository.findByUser(currentUser);
+
+            return favorites.stream().map(fav -> new FavoriteAccountResponse(
+                    fav.getId(),
+                    fav.getFavoriteUser().getId(),
+                    fav.getFavoriteUser().getFullname(),
+                    fav.getFavoriteUser().getPhoneNumber()
+            )).collect(Collectors.toList());
+
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to fetch favorite accounts: " + e.getMessage());
+        }
+    }
+
+    public void deleteFavoriteAccount(Long favoriteUserId, HttpServletRequest httpRequest) {
+        try {
+            String email = jwtService.extractUsername(jwtService.extractToken(httpRequest));
+            Users currentUser = usersRepository.findByEmail(email)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            Users favoriteUser = usersRepository.findById(favoriteUserId)
+                    .orElseThrow(() -> new RuntimeException("Favorite user not found"));
+
+            FavoriteAccount favoriteAccount = favoriteAccountRepository.findByUserAndFavoriteUser(currentUser, favoriteUser)
+                    .orElseThrow(() -> new RuntimeException("Favorite account not found"));
+
+            favoriteAccountRepository.delete(favoriteAccount);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to delete favorite account: " + e.getMessage());
+        }
+    }
+
 }
