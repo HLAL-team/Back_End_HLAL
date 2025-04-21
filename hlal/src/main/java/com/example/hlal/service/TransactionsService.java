@@ -45,11 +45,11 @@ public class TransactionsService {
 
         if (transactionType.getId() == 1) { // TOP UP
             if (request.getTopUpMethodId() == null) {
-                throw new RuntimeException("Top up method is required for top up transactions");
+                throw new RuntimeException("Top-up method is required for top-up transactions");
             }
 
             TopUpMethod topUpMethod = topUpMethodRepository.findById(request.getTopUpMethodId())
-                    .orElseThrow(() -> new RuntimeException("Top up method not found"));
+                    .orElseThrow(() -> new RuntimeException("Top-up method not found"));
 
             transaction.setTopUpMethod(topUpMethod);
             transaction.setRecipientWallet(null);
@@ -63,6 +63,10 @@ public class TransactionsService {
 
             Wallets recipientWallet = walletsRepository.findById(request.getRecipientWalletId())
                     .orElseThrow(() -> new RuntimeException("Recipient wallet not found"));
+
+            if (recipientWallet.getId().equals(senderWallet.getId())) {
+                throw new RuntimeException("You can't transfer to your own wallet");
+            }
 
             if (senderWallet.getBalance().compareTo(request.getAmount()) < 0) {
                 throw new RuntimeException("Insufficient balance");
@@ -144,7 +148,7 @@ public class TransactionsService {
             return Map.of(
                     "status", false,
                     "code", 404,
-                    "message", "Data tidak ditemukan.",
+                    "message", "No data found",
                     "totalData", 0,
                     "data", Collections.emptyList()
             );
@@ -158,7 +162,7 @@ public class TransactionsService {
         return Map.of(
                 "status", true,
                 "code", 200,
-                "message", "Data berhasil diambil",
+                "message", "Data retrieved successfully",
                 "totalData", totalData,
                 "data", paginated
         );
@@ -204,7 +208,7 @@ public class TransactionsService {
             return Map.of(
                     "status", false,
                     "code", 404,
-                    "message", "Data tidak ditemukan"
+                    "message", "No data found"
             );
         }
 
@@ -234,7 +238,7 @@ public class TransactionsService {
         return Map.of(
                 "status", true,
                 "code", 200,
-                "message", "Data berhasil diambil",
+                "message", "Data retrieved successfully",
                 "totalData", responseList.size(),
                 "totalIncome", totalIncome,
                 "totalOutcome", totalOutcome,
