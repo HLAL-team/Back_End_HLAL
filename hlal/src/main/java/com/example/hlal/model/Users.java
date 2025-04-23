@@ -50,7 +50,7 @@ public class Users implements UserDetails {
     @Column(name = "email", nullable = false, length = 255, unique = true)
     private String email;
 
-    @Column(name = "username", nullable = false, length = 20)
+    @Column(name = "username", nullable = false, length = 20, unique = true)
     private String username;
 
     @Column(name = "fullname", nullable = false, length = 70)

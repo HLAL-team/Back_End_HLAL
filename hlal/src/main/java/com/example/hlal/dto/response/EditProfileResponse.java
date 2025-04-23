@@ -3,12 +3,9 @@ package com.example.hlal.dto.response;
 import lombok.Data;
 
 @Data
-public class RegisterResponse {
+public class EditProfileResponse {
     private String status;
-    private String message;
-    private String email;
     private String username;
-    private String fullname;
-    private String phoneNumber;
+    private String message;
     private String avatarUrl;
 }
