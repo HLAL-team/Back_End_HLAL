@@ -74,27 +74,44 @@ public class TransactionsController {
         }
     }
 
+//    @GetMapping("/range")
+//    public ResponseEntity<Map<String, Object>> getTransactionsByTimeRange(
+//            @RequestParam String type,
+//            @RequestParam int year,
+//            @RequestParam(required = false) Integer month,
+//            @RequestParam(required = false) Integer week,
+//            @RequestParam(required = false) Integer quarter,
+//            HttpServletRequest httpRequest
+//    ) {
+//        try {
+//            Map<String, Object> result = transactionsService.getTransactionsByTimeRange(type, year, month, week, quarter, httpRequest);
+//            int statusCode = (int) result.getOrDefault("code", 200);
+//            return ResponseEntity.status(statusCode).body(result);
+//        } catch (Exception e) {
+//            Map<String, Object> errorResponse = new LinkedHashMap<>();
+//            errorResponse.put("status", false);
+//            errorResponse.put("code", 500);
+//            errorResponse.put("message", "Error fetching transactions: " + e.getMessage());
+//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+//        }
+//    }
+
     @GetMapping("/range")
     public ResponseEntity<Map<String, Object>> getTransactionsByTimeRange(
             @RequestParam String type,
-            @RequestParam int year,
+            @RequestParam(required = false) Integer year,
             @RequestParam(required = false) Integer month,
             @RequestParam(required = false) Integer week,
             @RequestParam(required = false) Integer quarter,
+            @RequestParam(required = false) Integer startYear,
+            @RequestParam(required = false) Integer endYear,
             HttpServletRequest httpRequest
     ) {
-        try {
-            Map<String, Object> result = transactionsService.getTransactionsByTimeRange(type, year, month, week, quarter, httpRequest);
-            int statusCode = (int) result.getOrDefault("code", 200);
-            return ResponseEntity.status(statusCode).body(result);
-        } catch (Exception e) {
-            Map<String, Object> errorResponse = new LinkedHashMap<>();
-            errorResponse.put("status", false);
-            errorResponse.put("code", 500);
-            errorResponse.put("message", "Error fetching transactions: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
-        }
+        Map<String, Object> result = transactionsService.getTransactionsByTimeRange(type, year, month, week, quarter, startYear, endYear, httpRequest);
+        int statusCode = (int) result.getOrDefault("code", 200);
+        return ResponseEntity.status(statusCode).body(result);
     }
+
 
     @PostMapping("/favorite")
     public ResponseEntity<Map<String, Object>> addFavoriteAccount(

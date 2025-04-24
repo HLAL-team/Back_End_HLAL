@@ -29,57 +29,50 @@ public class AuthController {
     @Autowired
     private JWTService jwtService;
 
-//    @PostMapping("/api/auth/register")
-//    public ResponseEntity<RegisterResponse>register(@RequestBody RegisterRequest registerRequest) {
-//        RegisterResponse registerResponse =new RegisterResponse();
-//        try {
-//            Users register = usersService.register(registerRequest);
-//            registerResponse.setStatus("Success");
-//            registerResponse.setMessage("Berhasil Registrasi");
-//        }catch (Exception e){
-//            registerResponse.setStatus("Error");
-//            registerResponse.setMessage(e.getMessage());
-//        }
-//        return ResponseEntity.ok(registerResponse);
-//    }
-
-    @PostMapping(value = "/api/auth/register", consumes = {"multipart/form-data"})
-    public ResponseEntity<RegisterResponse> register(@ModelAttribute RegisterRequest registerRequest) {
-        RegisterResponse response = new RegisterResponse();
+    @PostMapping(value = "/api/auth/register")
+    public ResponseEntity<RegisterResponse> register(@RequestBody RegisterRequest registerRequest) {
         try {
-            Users registeredUser = usersService.register(registerRequest);
-            response.setStatus("Success");
-            response.setMessage("Berhasil Registrasi");
-            response.setEmail(registeredUser.getEmail());
-            response.setFullname(registeredUser.getFullname());
-            response.setUsername(registerRequest.getUsername());
-            response.setPhoneNumber(registeredUser.getPhoneNumber());
-            response.setAvatarUrl(registeredUser.getAvatarUrl());
+            RegisterResponse response = usersService.register(registerRequest);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
+            RegisterResponse response = new RegisterResponse();
             response.setStatus("Error");
             response.setMessage(e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
         }
     }
 
+//    @PostMapping("/api/auth/login")
+//    public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest loginRequest) {
+//        LoginResponse loginResponse = new LoginResponse();;
+//        try {
+//            // Panggil service login
+//            String token = usersService.login(loginRequest);
+//            loginResponse.setStatus("Success");
+//            loginResponse.setMessage("Berhasil Login");
+//            loginResponse.setToken(token);
+//            return ResponseEntity.ok(loginResponse);
+//
+//        } catch (Exception e) {
+//            loginResponse.setStatus("Error");
+//            loginResponse.setMessage(e.getMessage());
+//            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(loginResponse);
+//        }
+//    }
+
     @PostMapping("/api/auth/login")
     public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest loginRequest) {
-        LoginResponse loginResponse = new LoginResponse();;
         try {
-            // Panggil service login
-            String token = usersService.login(loginRequest);
-            loginResponse.setStatus("Success");
-            loginResponse.setMessage("Berhasil Login");
-            loginResponse.setToken(token);
+            LoginResponse loginResponse = usersService.login(loginRequest);
             return ResponseEntity.ok(loginResponse);
-
         } catch (Exception e) {
+            LoginResponse loginResponse = new LoginResponse();
             loginResponse.setStatus("Error");
             loginResponse.setMessage(e.getMessage());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(loginResponse);
         }
     }
+
 
     @PostMapping(value = "/api/auth/edit-profile", consumes = {"multipart/form-data"})
     public ResponseEntity<EditProfileResponse> editProfile(

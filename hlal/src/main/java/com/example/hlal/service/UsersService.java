@@ -4,6 +4,8 @@ import com.example.hlal.dto.request.EditProfileRequest;
 import com.example.hlal.dto.request.LoginRequest;
 import com.example.hlal.dto.request.RegisterRequest;
 import com.example.hlal.dto.response.EditProfileResponse;
+import com.example.hlal.dto.response.LoginResponse;
+import com.example.hlal.dto.response.RegisterResponse;
 import com.example.hlal.model.Users;
 import com.example.hlal.model.Wallets;
 import com.example.hlal.repository.UsersRepository;
@@ -41,7 +43,8 @@ public class UsersService {
     @Autowired
     private final JWTService jwtService;
 
-    public Users register(RegisterRequest registerRequest) {
+    public RegisterResponse register(RegisterRequest registerRequest) {
+        RegisterResponse response = new RegisterResponse();
         try {
             if (!isValidEmail(registerRequest.getEmail())) {
                 throw new RuntimeException("Invalid email format");
@@ -78,19 +81,7 @@ public class UsersService {
             user.setFullname(registerRequest.getFullname());
             user.setPhoneNumber(registerRequest.getPhoneNumber());
             user.setPassword(passwordEncoder.encode(password));
-
-            MultipartFile avatarFile = registerRequest.getAvatar();
-            if (avatarFile != null && !avatarFile.isEmpty()) {
-                String uploadDir = "src/main/resources/static/uploads/";
-                String originalFilename = avatarFile.getOriginalFilename();
-                String fileName = System.currentTimeMillis() + "_" + originalFilename;
-                Path filePath = Paths.get(uploadDir + fileName);
-
-                Files.createDirectories(filePath.getParent());
-                Files.copy(avatarFile.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
-
-                user.setAvatarUrl("/uploads/" + fileName);
-            }
+            user.setAvatarUrl(null); // Tidak upload avatar
 
             Users savedUser = usersRepository.save(user);
 
@@ -107,13 +98,21 @@ public class UsersService {
             wallets.setUpdatedAt(LocalDateTime.now());
             walletsRepository.save(wallets);
 
-            return savedUser;
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to upload avatar", e);
+            // Build response
+            response.setStatus("Success");
+            response.setMessage("Berhasil Registrasi");
+            response.setEmail(savedUser.getEmail());
+            response.setFullname(savedUser.getFullname());
+            response.setUsername(savedUser.getUsername());
+            response.setPhoneNumber(savedUser.getPhoneNumber());
+            response.setAvatarUrl(null);
+
+            return response;
         } catch (Exception e) {
             throw new RuntimeException("Registration failed: " + e.getMessage(), e);
         }
     }
+
 
     public EditProfileResponse editProfile(String email, EditProfileRequest request) {
         EditProfileResponse response = new EditProfileResponse();
@@ -209,7 +208,27 @@ public class UsersService {
         }
     }
 
-    public String login(LoginRequest loginRequest) {
+//    public String login(LoginRequest loginRequest) {
+//        try {
+//            Optional<Users> optionalUser = usersRepository.findByEmail(loginRequest.getEmail());
+//            if (optionalUser.isEmpty()) {
+//                throw new RuntimeException("Wrong email");
+//            }
+//
+//            Users user = optionalUser.get();
+//            boolean isPasswordMatch = BCrypt.checkpw(loginRequest.getPassword(), user.getPassword());
+//            if (!isPasswordMatch) {
+//                throw new RuntimeException("Wrong password");
+//            }
+//
+//            return jwtService.generateToken(user.getEmail());
+//        } catch (Exception e) {
+//            throw new RuntimeException("Login failed: " + e.getMessage(), e);
+//        }
+//    }
+
+    public LoginResponse login(LoginRequest loginRequest) {
+        LoginResponse response = new LoginResponse();
         try {
             Optional<Users> optionalUser = usersRepository.findByEmail(loginRequest.getEmail());
             if (optionalUser.isEmpty()) {
@@ -222,11 +241,18 @@ public class UsersService {
                 throw new RuntimeException("Wrong password");
             }
 
-            return jwtService.generateToken(user.getEmail());
+            String token = jwtService.generateToken(user.getEmail());
+
+            response.setStatus("Success");
+            response.setMessage("Berhasil Login");
+            response.setToken(token);
+            return response;
         } catch (Exception e) {
             throw new RuntimeException("Login failed: " + e.getMessage(), e);
         }
     }
+
+
 
     private String generateAccountNumber() {
         StringBuilder accountNumber = new StringBuilder();

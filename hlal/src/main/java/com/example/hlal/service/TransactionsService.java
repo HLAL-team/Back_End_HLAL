@@ -172,83 +172,197 @@ public class TransactionsService {
         );
     }
 
-    public Map<String, Object> getTransactionsByTimeRange(String type, Integer year, Integer month, Integer week, Integer quarter, HttpServletRequest httpRequest) {
-        String jwt = jwtService.extractToken(httpRequest);
-        String userEmail = jwtService.extractUsername(jwt);
-        Wallets wallet = walletsRepository.findByUsersEmail(userEmail)
-                .orElseThrow(() -> new RuntimeException("Wallet not found"));
+//    public Map<String, Object> getTransactionsByTimeRange(String type, Integer year, Integer month, Integer week, Integer quarter, HttpServletRequest httpRequest) {
+//        String jwt = jwtService.extractToken(httpRequest);
+//        String userEmail = jwtService.extractUsername(jwt);
+//        Wallets wallet = walletsRepository.findByUsersEmail(userEmail)
+//                .orElseThrow(() -> new RuntimeException("Wallet not found"));
+//
+//        LocalDateTime start, end;
+//
+//        switch (type.toLowerCase()) {
+//            case "month":
+//                if (month == null || year == null)
+//                    throw new IllegalArgumentException("Month and year are required");
+//                start = LocalDateTime.of(year, month, 1, 0, 0);
+//                end = start.withDayOfMonth(start.toLocalDate().lengthOfMonth()).withHour(23).withMinute(59).withSecond(59);
+//                break;
+//            case "week":
+//                if (week == null || month == null || year == null)
+//                    throw new IllegalArgumentException("Week, month, and year are required");
+//                LocalDate firstDayOfMonth = LocalDate.of(year, month, 1);
+//                LocalDate firstWeekStart = firstDayOfMonth.with(DayOfWeek.MONDAY);
+//                start = firstWeekStart.plusWeeks(week - 1).atStartOfDay();
+//                end = start.plusDays(6).withHour(23).withMinute(59).withSecond(59);
+//                break;
+//            case "quarter":
+//                if (quarter == null || year == null)
+//                    throw new IllegalArgumentException("Quarter and year are required");
+//                int startMonth = (quarter - 1) * 3 + 1;
+//                start = LocalDateTime.of(year, startMonth, 1, 0, 0);
+//                end = start.plusMonths(2).withDayOfMonth(start.plusMonths(2).toLocalDate().lengthOfMonth()).withHour(23).withMinute(59).withSecond(59);
+//                break;
+//            default:
+//                throw new IllegalArgumentException("Invalid type: must be 'month', 'week', or 'quarter'");
+//        }
+//
+//        List<Transactions> transactions = transactionsRepository.findByWalletIdAndTransactionDateBetween(wallet.getId(), start, end);
+//
+//        if (transactions.isEmpty()) {
+//            return Map.of(
+//                    "status", false,
+//                    "code", 404,
+//                    "message", "No data found"
+//            );
+//        }
+//
+//        BigDecimal totalIncome = transactions.stream()
+//                .filter(tx -> tx.getTransactionType().getId() == 1)
+//                .map(Transactions::getAmount)
+//                .reduce(BigDecimal.ZERO, BigDecimal::add);
+//
+//        BigDecimal totalOutcome = transactions.stream()
+//                .filter(tx -> tx.getTransactionType().getId() == 2)
+//                .map(Transactions::getAmount)
+//                .reduce(BigDecimal.ZERO, BigDecimal::add);
+//
+//        List<TransactionsResponse> responseList = transactions.stream().map(tx -> {
+//            TransactionsResponse res = new TransactionsResponse();
+//            res.setTransactionId(tx.getId());
+//            res.setTransactionType(tx.getTransactionType().getName());
+//            res.setAmount(tx.getAmount());
+//            res.setSender(tx.getWallet().getUsers().getFullname());
+//            res.setRecipient(tx.getRecipientWallet() != null ? tx.getRecipientWallet().getUsers().getFullname() : null);
+//            res.setDescription(tx.getDescription());
+//            res.setTransactionDate(tx.getTransactionDate());
+//            res.setTransactionDateFormatted(tx.getTransactionDate().format(DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm")));
+//            return res;
+//        }).collect(Collectors.toList());
+//
+//        return Map.of(
+//                "status", true,
+//                "code", 200,
+//                "message", "Data retrieved successfully",
+//                "totalData", responseList.size(),
+//                "totalIncome", totalIncome,
+//                "totalOutcome", totalOutcome,
+//                "data", responseList
+//        );
+//    }
 
-        LocalDateTime start, end;
+    public Map<String, Object> getTransactionsByTimeRange(
+            String type,
+            Integer year,
+            Integer month,
+            Integer week,
+            Integer quarter,
+            Integer startYear,
+            Integer endYear,
+            HttpServletRequest httpRequest
+    ) {
+        Map<String, Object> response = new LinkedHashMap<>();
+        try {
+            String jwt = jwtService.extractToken(httpRequest);
+            String userEmail = jwtService.extractUsername(jwt);
+            Wallets wallet = walletsRepository.findByUsersEmail(userEmail)
+                    .orElseThrow(() -> new RuntimeException("Wallet not found"));
 
-        switch (type.toLowerCase()) {
-            case "month":
-                if (month == null || year == null)
-                    throw new IllegalArgumentException("Month and year are required");
-                start = LocalDateTime.of(year, month, 1, 0, 0);
-                end = start.withDayOfMonth(start.toLocalDate().lengthOfMonth()).withHour(23).withMinute(59).withSecond(59);
-                break;
-            case "week":
-                if (week == null || month == null || year == null)
-                    throw new IllegalArgumentException("Week, month, and year are required");
-                LocalDate firstDayOfMonth = LocalDate.of(year, month, 1);
-                LocalDate firstWeekStart = firstDayOfMonth.with(DayOfWeek.MONDAY);
-                start = firstWeekStart.plusWeeks(week - 1).atStartOfDay();
-                end = start.plusDays(6).withHour(23).withMinute(59).withSecond(59);
-                break;
-            case "quarter":
-                if (quarter == null || year == null)
-                    throw new IllegalArgumentException("Quarter and year are required");
-                int startMonth = (quarter - 1) * 3 + 1;
-                start = LocalDateTime.of(year, startMonth, 1, 0, 0);
-                end = start.plusMonths(2).withDayOfMonth(start.plusMonths(2).toLocalDate().lengthOfMonth()).withHour(23).withMinute(59).withSecond(59);
-                break;
-            default:
-                throw new IllegalArgumentException("Invalid type: must be 'month', 'week', or 'quarter'");
+            LocalDateTime start;
+            LocalDateTime end;
+
+            switch (type.toLowerCase()) {
+                case "daily":
+                    if (week == null || month == null || year == null)
+                        throw new IllegalArgumentException("Week, month, and year are required for daily filter");
+                    LocalDate firstDayOfMonth = LocalDate.of(year, month, 1);
+                    LocalDate weekStart = firstDayOfMonth.with(DayOfWeek.MONDAY).plusWeeks(week - 1);
+                    start = weekStart.atStartOfDay();
+                    end = start.plusDays(6).withHour(23).withMinute(59).withSecond(59);
+                    break;
+
+                case "weekly":
+                    if (month == null || year == null)
+                        throw new IllegalArgumentException("Month and year are required for weekly filter");
+                    LocalDate first = LocalDate.of(year, month, 1);
+                    start = first.with(DayOfWeek.MONDAY).atStartOfDay();
+                    end = first.plusMonths(1).minusDays(1).with(DayOfWeek.SUNDAY).atTime(23, 59, 59);
+                    break;
+
+                case "monthly":
+                    if (year == null)
+                        throw new IllegalArgumentException("Year is required for monthly filter");
+                    start = LocalDateTime.of(year, 1, 1, 0, 0);
+                    end = LocalDateTime.of(year, 12, 31, 23, 59, 59);
+                    break;
+
+                case "quarterly":
+                    if (year == null)
+                        throw new IllegalArgumentException("Year is required for quarterly filter");
+                    start = LocalDateTime.of(year, 1, 1, 0, 0);
+                    end = LocalDateTime.of(year, 12, 31, 23, 59, 59);
+                    break;
+
+                case "yearly":
+                    if (startYear == null || endYear == null)
+                        throw new IllegalArgumentException("Start year and end year are required for yearly filter");
+                    start = LocalDateTime.of(startYear, 1, 1, 0, 0);
+                    end = LocalDateTime.of(endYear, 12, 31, 23, 59, 59);
+                    break;
+
+                default:
+                    throw new IllegalArgumentException("Invalid type: must be 'daily', 'weekly', 'monthly', 'quarterly', or 'yearly'");
+            }
+
+            List<Transactions> transactions = transactionsRepository.findByWalletIdAndTransactionDateBetween(wallet.getId(), start, end);
+
+            if (transactions.isEmpty()) {
+                return Map.of(
+                        "status", false,
+                        "code", 404,
+                        "message", "No data found"
+                );
+            }
+
+            BigDecimal totalIncome = transactions.stream()
+                    .filter(tx -> tx.getTransactionType().getId() == 1)
+                    .map(Transactions::getAmount)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            BigDecimal totalOutcome = transactions.stream()
+                    .filter(tx -> tx.getTransactionType().getId() == 2)
+                    .map(Transactions::getAmount)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            List<TransactionsResponse> responseList = transactions.stream().map(tx -> {
+                TransactionsResponse res = new TransactionsResponse();
+                res.setTransactionId(tx.getId());
+                res.setTransactionType(tx.getTransactionType().getName());
+                res.setAmount(tx.getAmount());
+                res.setSender(tx.getWallet().getUsers().getFullname());
+                res.setRecipient(tx.getRecipientWallet() != null ? tx.getRecipientWallet().getUsers().getFullname() : null);
+                res.setDescription(tx.getDescription());
+                res.setTransactionDate(tx.getTransactionDate());
+                res.setTransactionDateFormatted(tx.getTransactionDate().format(DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm")));
+                return res;
+            }).collect(Collectors.toList());
+
+            response.put("status", true);
+            response.put("code", 200);
+            response.put("message", "Data retrieved successfully");
+            response.put("totalData", responseList.size());
+            response.put("totalIncome", totalIncome);
+            response.put("totalOutcome", totalOutcome);
+            response.put("data", responseList);
+            return response;
+
+        } catch (Exception e) {
+            response.put("status", false);
+            response.put("code", 500);
+            response.put("message", "Error fetching transactions: " + e.getMessage());
+            return response;
         }
-
-        List<Transactions> transactions = transactionsRepository.findByWalletIdAndTransactionDateBetween(wallet.getId(), start, end);
-
-        if (transactions.isEmpty()) {
-            return Map.of(
-                    "status", false,
-                    "code", 404,
-                    "message", "No data found"
-            );
-        }
-
-        BigDecimal totalIncome = transactions.stream()
-                .filter(tx -> tx.getTransactionType().getId() == 1)
-                .map(Transactions::getAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        BigDecimal totalOutcome = transactions.stream()
-                .filter(tx -> tx.getTransactionType().getId() == 2)
-                .map(Transactions::getAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        List<TransactionsResponse> responseList = transactions.stream().map(tx -> {
-            TransactionsResponse res = new TransactionsResponse();
-            res.setTransactionId(tx.getId());
-            res.setTransactionType(tx.getTransactionType().getName());
-            res.setAmount(tx.getAmount());
-            res.setSender(tx.getWallet().getUsers().getFullname());
-            res.setRecipient(tx.getRecipientWallet() != null ? tx.getRecipientWallet().getUsers().getFullname() : null);
-            res.setDescription(tx.getDescription());
-            res.setTransactionDate(tx.getTransactionDate());
-            res.setTransactionDateFormatted(tx.getTransactionDate().format(DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm")));
-            return res;
-        }).collect(Collectors.toList());
-
-        return Map.of(
-                "status", true,
-                "code", 200,
-                "message", "Data retrieved successfully",
-                "totalData", responseList.size(),
-                "totalIncome", totalIncome,
-                "totalOutcome", totalOutcome,
-                "data", responseList
-        );
     }
+
 
     public FavoriteAccountResponse addFavoriteAccount(FavoriteAccountRequest request, HttpServletRequest httpRequest) {
         try {

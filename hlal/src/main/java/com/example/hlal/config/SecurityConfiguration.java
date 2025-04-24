@@ -29,7 +29,17 @@ public class SecurityConfiguration {
                                 "/api/auth/**"
                         ).permitAll()
                         .anyRequest().authenticated()
-                ).csrf(csrf -> csrf.disable())
+                ).csrf(csrf -> csrf.disable()).cors(cors->cors.configurationSource(request ->{
+                    var corsConfig = new CorsConfiguration();
+                    corsConfig.setAllowedOrigins(List.of(
+                            "http://localhost:5173",
+                            "http://localhost:3000"
+                    ));
+                    corsConfig.setAllowedMethods(List.of("GET","POST","PUT","DELETE","OPTIONS"));
+                    corsConfig.setAllowedHeaders(List.of("Authorization","Content-Type"));
+                    corsConfig.setAllowCredentials(true);
+                    return corsConfig;
+                }))
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
