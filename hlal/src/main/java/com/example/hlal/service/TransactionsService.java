@@ -1,8 +1,10 @@
 package com.example.hlal.service;
 
 import com.example.hlal.dto.request.FavoriteAccountRequest;
+import com.example.hlal.dto.request.RecipientCheckRequest;
 import com.example.hlal.dto.request.TransactionsRequest;
 import com.example.hlal.dto.response.FavoriteAccountResponse;
+import com.example.hlal.dto.response.RecipientCheckResponse;
 import com.example.hlal.dto.response.TransactionsResponse;
 import com.example.hlal.model.*;
 import com.example.hlal.repository.*;
@@ -413,6 +415,34 @@ public class TransactionsService {
         } catch (Exception e) {
             throw new RuntimeException("Failed to show list of topup methods: " + e.getMessage());
         }
+    }
+
+    public RecipientCheckResponse checkingRecepientAccountNumber(RecipientCheckRequest recipientCheckRequest, HttpServletRequest httpRequest) {
+        RecipientCheckResponse response = new RecipientCheckResponse();
+        try{
+            String jwt = jwtService.extractToken(httpRequest);
+            String userEmail = jwtService.extractUsername(jwt);
+            usersRepository.findByEmail(userEmail)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            String CheckAccount = recipientCheckRequest.getRecipientAccountNumber().trim();
+            Optional<Wallets> checkrecipwallet;
+            checkrecipwallet = walletsRepository.findByAccountNumber(CheckAccount);
+            if(checkrecipwallet.isPresent()){
+                Wallets wallets = checkrecipwallet.get();
+                String recipientName = wallets.getUsers().getFullname();
+                response.setStatus("Success");
+                response.setMessage("Account found: " + recipientName);
+                response.setRecipientName(recipientName);
+            }else {
+                response.setStatus("Failed");
+                response.setMessage("Account not found: " + CheckAccount);
+            }
+
+        }catch (Exception e){
+            throw new RuntimeException("Failed to checking recepient account number: " + e.getMessage());
+        }
+        return response;
     }
 
 }
