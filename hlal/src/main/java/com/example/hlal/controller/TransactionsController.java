@@ -4,8 +4,10 @@ import com.example.hlal.dto.request.*;
 import com.example.hlal.dto.request.FavoriteAccountRequest;
 import com.example.hlal.dto.request.TransactionsRequest;
 import com.example.hlal.dto.response.FavoriteAccountResponse;
+import com.example.hlal.dto.response.RecipientCheckResponse;
 import com.example.hlal.dto.response.TransactionsResponse;
 import com.example.hlal.model.TopUpMethod;
+import com.example.hlal.model.Wallets;
 import com.example.hlal.service.TransactionsService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -180,5 +182,28 @@ public class TransactionsController {
         }
     }
 
+    @PostMapping("/checking")
+    public ResponseEntity<Map<String, Object>> checkRecipientAccount(
+            @RequestBody RecipientCheckRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        Map<String, Object> response = new LinkedHashMap<>();
 
+        try {
+            RecipientCheckResponse result = transactionsService.checkingRecepientAccountNumber(request, httpRequest);
+
+            response.put("status", true);
+            response.put("code", 200);
+            response.put("data", result);
+            return ResponseEntity.status(HttpStatus.OK).body(response);
+
+        } catch (RuntimeException ex) {
+            response.put("status", false);
+            response.put("code", 400);
+            response.put("error", "Bad Request");
+            response.put("message", ex.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        }
+
+    }
 }
