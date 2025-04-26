@@ -285,32 +285,38 @@ public class TransactionsService {
         }
     }
 
-
     public FavoriteAccountResponse addFavoriteAccount(FavoriteAccountRequest request, HttpServletRequest httpRequest) {
         try {
+            // Ambil email dari JWT token
             String email = jwtService.extractUsername(jwtService.extractToken(httpRequest));
             Users currentUser = usersRepository.findByEmail(email)
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
-            Users favoriteUser = usersRepository.findById(request.getFavoriteUserId())
-                    .orElseThrow(() -> new RuntimeException("Favorite user not found"));
+            // Cari wallet berdasarkan account number yang diberikan
+            Wallets favoriteWallet = walletsRepository.findByAccountNumber(request.getFavoriteAccountNumber())
+                    .orElseThrow(() -> new RuntimeException("Favorite account not found"));
 
-            if (favoriteAccountRepository.existsByUserAndFavoriteUser(currentUser, favoriteUser)) {
-                throw new RuntimeException("Favorite already exists");
+            Users favoriteUser = favoriteWallet.getUsers();
+
+            // Tidak boleh menambahkan diri sendiri sebagai favorite
+            if (favoriteUser.getId().equals(currentUser.getId())) {
+                throw new RuntimeException("You cannot add your own account as a favorite");
             }
 
+            // Cek jika sudah ada favorite yang sama
+            boolean exists = favoriteAccountRepository.existsByUserAndFavoriteUser(currentUser, favoriteUser);
+            if (exists) {
+                throw new RuntimeException("This account is already in your favorites");
+            }
+
+            // Buat dan simpan FavoriteAccount baru
             FavoriteAccount favoriteAccount = new FavoriteAccount();
             favoriteAccount.setUser(currentUser);
             favoriteAccount.setFavoriteUser(favoriteUser);
             favoriteAccount.setCreatedAt(LocalDateTime.now());
             favoriteAccountRepository.save(favoriteAccount);
 
-            return new FavoriteAccountResponse(
-                    favoriteAccount.getId(),
-                    favoriteUser.getId(),
-                    favoriteUser.getFullname(),
-                    favoriteUser.getPhoneNumber()
-            );
+            return buildResponse(favoriteAccount);
         } catch (Exception e) {
             throw new RuntimeException("Failed to add favorite account: " + e.getMessage());
         }
@@ -318,32 +324,33 @@ public class TransactionsService {
 
     public List<FavoriteAccountResponse> getFavoriteAccounts(HttpServletRequest httpRequest) {
         try {
+            // Ambil email dari JWT token
             String email = jwtService.extractUsername(jwtService.extractToken(httpRequest));
             Users currentUser = usersRepository.findByEmail(email)
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
+            // Ambil daftar favorite accounts
             List<FavoriteAccount> favorites = favoriteAccountRepository.findByUser(currentUser);
 
-            return favorites.stream().map(fav -> new FavoriteAccountResponse(
-                    fav.getId(),
-                    fav.getFavoriteUser().getId(),
-                    fav.getFavoriteUser().getFullname(),
-                    fav.getFavoriteUser().getPhoneNumber()
-            )).collect(Collectors.toList());
+            return favorites.stream()
+                    .map(this::buildResponse)
+                    .collect(Collectors.toList());
 
         } catch (Exception e) {
             throw new RuntimeException("Failed to fetch favorite accounts: " + e.getMessage());
         }
     }
 
-    public void deleteFavoriteAccount(Long favoriteUserId, HttpServletRequest httpRequest) {
+    public void deleteFavoriteAccount(String favoriteAccountNumber, HttpServletRequest httpRequest) {
         try {
             String email = jwtService.extractUsername(jwtService.extractToken(httpRequest));
             Users currentUser = usersRepository.findByEmail(email)
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
-            Users favoriteUser = usersRepository.findById(favoriteUserId)
-                    .orElseThrow(() -> new RuntimeException("Favorite user not found"));
+            Wallets favoriteWallet = walletsRepository.findByAccountNumber(favoriteAccountNumber)
+                    .orElseThrow(() -> new RuntimeException("Favorite account not found"));
+
+            Users favoriteUser = favoriteWallet.getUsers();
 
             FavoriteAccount favoriteAccount = favoriteAccountRepository.findByUserAndFavoriteUser(currentUser, favoriteUser)
                     .orElseThrow(() -> new RuntimeException("Favorite account not found"));
@@ -354,4 +361,20 @@ public class TransactionsService {
         }
     }
 
+    private FavoriteAccountResponse buildResponse(FavoriteAccount favoriteAccount) {
+        Users favoriteUser = favoriteAccount.getFavoriteUser();
+        Wallets favoriteWallet = favoriteUser.getWallets();
+
+        return new FavoriteAccountResponse(
+                favoriteAccount.getId(),
+                favoriteUser.getId(),
+                favoriteUser.getFullname(),
+                favoriteUser.getUsername(),
+                favoriteWallet.getAccountNumber(),
+                favoriteUser.getPhoneNumber(),
+                favoriteUser.getAvatarUrl()
+        );
+    }
 }
+
+

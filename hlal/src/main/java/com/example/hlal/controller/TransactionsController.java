@@ -1,6 +1,6 @@
 package com.example.hlal.controller;
 
-import com.example.hlal.dto.request.FavoriteAccountRequest;
+import com.example.hlal.dto.request.*;
 import com.example.hlal.dto.request.TransactionsRequest;
 import com.example.hlal.dto.response.FavoriteAccountResponse;
 import com.example.hlal.dto.response.TransactionsResponse;
@@ -119,7 +119,6 @@ public class TransactionsController {
             HttpServletRequest httpRequest
     ) {
         Map<String, Object> response = new LinkedHashMap<>();
-
         try {
             FavoriteAccountResponse result = transactionsService.addFavoriteAccount(request, httpRequest);
 
@@ -143,14 +142,17 @@ public class TransactionsController {
         Map<String, Object> response = new LinkedHashMap<>();
         try {
             List<FavoriteAccountResponse> favorites = transactionsService.getFavoriteAccounts(httpRequest);
+
             response.put("status", true);
             response.put("code", 200);
             response.put("data", favorites);
             return ResponseEntity.ok(response);
+
         } catch (RuntimeException e) {
             response.put("timestamp", LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd MMMM yyyy HH:mm", new Locale("id", "ID"))));
             response.put("status", false);
             response.put("code", 500);
+            response.put("error", "Internal Server Error");
             response.put("message", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
@@ -158,13 +160,13 @@ public class TransactionsController {
 
     @DeleteMapping("/favorite")
     public ResponseEntity<Map<String, Object>> deleteFavoriteAccount(
-            @RequestParam Long favoriteUserId,
+            @RequestParam String favoriteAccountNumber,
             HttpServletRequest httpRequest
     ) {
         Map<String, Object> response = new LinkedHashMap<>();
 
         try {
-            transactionsService.deleteFavoriteAccount(favoriteUserId, httpRequest);
+            transactionsService.deleteFavoriteAccount(favoriteAccountNumber, httpRequest);
 
             response.put("status", true);
             response.put("code", 200);
@@ -180,7 +182,5 @@ public class TransactionsController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
         }
     }
-
-
 
 }

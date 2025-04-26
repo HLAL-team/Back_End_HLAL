@@ -11,5 +11,8 @@ public class FavoriteAccountResponse {
     private Long id;
     private Long favoriteUserId;
     private String fullname;
+    private String username;
+    private String accountNumber;
     private String phoneNumber;
+    private String avatarUrl;
 }
