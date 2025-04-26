@@ -125,7 +125,6 @@ public class UsersService {
         }
     }
 
-
     public EditProfileResponse editProfile(String email, EditProfileRequest request) {
         EditProfileResponse response = new EditProfileResponse();
         try {
@@ -136,7 +135,8 @@ public class UsersService {
             boolean isPasswordUpdated = false;
             boolean isAvatarUpdated = false;
 
-            if (request.getUsername() != null && !request.getUsername().equals(user.getUsername())) {
+            // Update username
+            if (request.getUsername() != null && !request.getUsername().isEmpty()) {
                 if (!isValidUsername(request.getUsername())) {
                     response.setStatus("Error");
                     response.setMessage("Invalid username format");
@@ -145,7 +145,16 @@ public class UsersService {
                     return response;
                 }
 
-                if (usersRepository.findByUsername(request.getUsername()).isPresent()) {
+                if (request.getUsername().equals(user.getUsername())) {
+                    response.setStatus("Error");
+                    response.setMessage("New username must be different from the current username");
+                    response.setUsername(user.getUsername());
+                    response.setAvatarUrl(user.getAvatarUrl());
+                    return response;
+                }
+
+                Optional<Users> existingUser = usersRepository.findByUsername(request.getUsername());
+                if (existingUser.isPresent() && !existingUser.get().getId().equals(user.getId())) {
                     response.setStatus("Error");
                     response.setMessage("Username is already taken");
                     response.setUsername(user.getUsername());
@@ -157,6 +166,7 @@ public class UsersService {
                 isUsernameUpdated = true;
             }
 
+            // Update password
             if (request.getPassword() != null && !request.getPassword().isEmpty()) {
                 if (!isValidPassword(request.getPassword())) {
                     response.setStatus("Error");
@@ -166,18 +176,19 @@ public class UsersService {
                     return response;
                 }
 
-                if (!BCrypt.checkpw(request.getPassword(), user.getPassword())) {
-                    user.setPassword(passwordEncoder.encode(request.getPassword()));
-                    isPasswordUpdated = true;
-                } else {
+                if (BCrypt.checkpw(request.getPassword(), user.getPassword())) {
                     response.setStatus("Error");
                     response.setMessage("New password must be different from the current password");
                     response.setUsername(user.getUsername());
                     response.setAvatarUrl(user.getAvatarUrl());
                     return response;
                 }
+
+                user.setPassword(passwordEncoder.encode(request.getPassword()));
+                isPasswordUpdated = true;
             }
 
+            // Update avatar
             MultipartFile avatarFile = request.getAvatar();
             if (avatarFile != null && !avatarFile.isEmpty()) {
                 String uploadDir = "src/main/resources/static/uploads/";
@@ -194,13 +205,14 @@ public class UsersService {
 
             usersRepository.save(user);
 
-            // Update updatedAt pada wallet
+            // Update updatedAt wallet
             Optional<Wallets> optionalWallet = walletsRepository.findByUsers(user);
             optionalWallet.ifPresent(wallet -> {
                 wallet.setUpdatedAt(LocalDateTime.now());
                 walletsRepository.save(wallet);
             });
 
+            // Build response message
             StringBuilder messageBuilder = new StringBuilder("Profile updated successfully");
             if (isUsernameUpdated) messageBuilder.append(", username updated");
             if (isPasswordUpdated) messageBuilder.append(", password updated");
@@ -208,8 +220,8 @@ public class UsersService {
 
             response.setStatus("Success");
             response.setMessage(messageBuilder.toString());
-            response.setAvatarUrl(user.getAvatarUrl());
             response.setUsername(user.getUsername());
+            response.setAvatarUrl(user.getAvatarUrl());
             return response;
 
         } catch (IOException e) {
@@ -227,10 +239,6 @@ public class UsersService {
         }
     }
 
-<<<<<<< HEAD
-=======
-
->>>>>>> 3aa96c0f8c3c46af2d27807a1599a38b6e80c8c1
     public LoginResponse login(LoginRequest loginRequest) {
         LoginResponse response = new LoginResponse();
         try {
