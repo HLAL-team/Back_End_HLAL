@@ -4,6 +4,7 @@ import com.example.hlal.dto.request.FavoriteAccountRequest;
 import com.example.hlal.dto.request.TransactionsRequest;
 import com.example.hlal.dto.response.FavoriteAccountResponse;
 import com.example.hlal.dto.response.TransactionsResponse;
+import com.example.hlal.model.TopUpMethod;
 import com.example.hlal.service.TransactionsService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -181,6 +182,24 @@ public class TransactionsController {
         }
     }
 
+    @GetMapping("/topupmethod")
+    public ResponseEntity<Map<String, Object>> getAllTopUpMethods(
+            HttpServletRequest httpRequest
+    ) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            List<TopUpMethod> topUpMethods = transactionsService.getTopUpMethods(httpRequest);
+            response.put("status", true);
+            response.put("code", 200);
+            response.put("data", topUpMethods);
+            return ResponseEntity.ok(response);// Status OK
+        } catch (RuntimeException e) {
+            response.put("status", false);
+            response.put("code", 500);
+            response.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
 
 
 }

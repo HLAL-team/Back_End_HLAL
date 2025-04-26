@@ -208,25 +208,6 @@ public class UsersService {
         }
     }
 
-//    public String login(LoginRequest loginRequest) {
-//        try {
-//            Optional<Users> optionalUser = usersRepository.findByEmail(loginRequest.getEmail());
-//            if (optionalUser.isEmpty()) {
-//                throw new RuntimeException("Wrong email");
-//            }
-//
-//            Users user = optionalUser.get();
-//            boolean isPasswordMatch = BCrypt.checkpw(loginRequest.getPassword(), user.getPassword());
-//            if (!isPasswordMatch) {
-//                throw new RuntimeException("Wrong password");
-//            }
-//
-//            return jwtService.generateToken(user.getEmail());
-//        } catch (Exception e) {
-//            throw new RuntimeException("Login failed: " + e.getMessage(), e);
-//        }
-//    }
-
     public LoginResponse login(LoginRequest loginRequest) {
         LoginResponse response = new LoginResponse();
         try {

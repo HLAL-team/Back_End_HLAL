@@ -432,4 +432,17 @@ public class TransactionsService {
         }
     }
 
+    public List<TopUpMethod> getTopUpMethods(HttpServletRequest httpRequest) {
+        try{
+            String jwt = jwtService.extractToken(httpRequest);
+            String userEmail = jwtService.extractUsername(jwt);
+            usersRepository.findByEmail(userEmail)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            return topUpMethodRepository.findAll();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to show list of topup methods: " + e.getMessage());
+        }
+    }
+
 }

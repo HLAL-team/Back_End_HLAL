@@ -42,24 +42,6 @@ public class AuthController {
         }
     }
 
-//    @PostMapping("/api/auth/login")
-//    public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest loginRequest) {
-//        LoginResponse loginResponse = new LoginResponse();;
-//        try {
-//            // Panggil service login
-//            String token = usersService.login(loginRequest);
-//            loginResponse.setStatus("Success");
-//            loginResponse.setMessage("Berhasil Login");
-//            loginResponse.setToken(token);
-//            return ResponseEntity.ok(loginResponse);
-//
-//        } catch (Exception e) {
-//            loginResponse.setStatus("Error");
-//            loginResponse.setMessage(e.getMessage());
-//            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(loginResponse);
-//        }
-//    }
-
     @PostMapping("/api/auth/login")
     public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest loginRequest) {
         try {

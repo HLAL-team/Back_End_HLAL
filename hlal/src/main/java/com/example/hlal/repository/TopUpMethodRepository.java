@@ -9,4 +9,5 @@ import java.util.Optional;
 
 @Repository
 public interface TopUpMethodRepository extends JpaRepository<TopUpMethod, Long> {
+    Optional<TopUpMethod> findTopUpMethodById(Long id);
 }
