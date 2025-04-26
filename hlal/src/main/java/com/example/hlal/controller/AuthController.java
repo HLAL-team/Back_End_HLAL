@@ -6,6 +6,7 @@ import com.example.hlal.dto.request.RegisterRequest;
 import com.example.hlal.dto.response.EditProfileResponse;
 import com.example.hlal.dto.response.LoginResponse;
 import com.example.hlal.dto.response.RegisterResponse;
+import com.example.hlal.dto.response.UserProfileResponse;
 import com.example.hlal.model.Users;
 import com.example.hlal.service.JWTService;
 import com.example.hlal.service.UsersService;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.swing.text.html.Option;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
@@ -52,6 +54,20 @@ public class AuthController {
             loginResponse.setStatus("Error");
             loginResponse.setMessage(e.getMessage());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(loginResponse);
+        }
+    }
+
+    @GetMapping("/api/auth/profile")
+    public ResponseEntity<?> getProfile(@RequestHeader("Authorization") String authHeader) {
+        try {
+            String token = authHeader.replace("Bearer ", "");
+            UserProfileResponse profile = usersService.getProfile(token);
+            return ResponseEntity.ok(profile);
+        } catch (Exception e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("status", "Error");
+            error.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
         }
     }
 
