@@ -44,11 +44,12 @@ public class UsersService {
 
     @Autowired
     private final JWTService jwtService;
+
     public RegisterResponse register(RegisterRequest registerRequest) {
         RegisterResponse response = new RegisterResponse();
         try {
             // Validasi input
-            if(isNull(registerRequest.getEmail())) {
+            if (isNull(registerRequest.getEmail())) {
                 throw new RuntimeException("Field Email cannot be empty");
             }
             if (!isValidEmail(registerRequest.getEmail())) {
@@ -62,14 +63,12 @@ public class UsersService {
                 throw new RuntimeException("Username must be 5–20 characters and only contain letters, numbers, or underscores");
             }
 
-
             if (isNull(registerRequest.getFullname())) {
                 throw new RuntimeException("Full Name cannot be empty");
             }
             if (!isValidFullname(registerRequest.getFullname())) {
                 throw new RuntimeException("Full name must only contain letters, spaces, periods, hyphens, and be up to 70 characters");
             }
-
 
             if (isNull(registerRequest.getPhoneNumber())) {
                 throw new RuntimeException("Field Phone Number cannot be empty");
@@ -78,7 +77,6 @@ public class UsersService {
                 throw new RuntimeException("Phone number must be 10–15 digits");
             }
 
-
             if (isNull(registerRequest.getPassword())) {
                 throw new RuntimeException("Field Password cannot be empty");
             }
@@ -86,12 +84,17 @@ public class UsersService {
                 throw new RuntimeException("Password must be at least 8 characters long and include uppercase, lowercase, number, and special character");
             }
 
+            // Cek email, username, dan phone number sudah dipakai atau belum
             if (usersRepository.findByEmail(registerRequest.getEmail()).isPresent()) {
                 throw new RuntimeException("Email is already in use");
             }
 
             if (usersRepository.findByUsername(registerRequest.getUsername()).isPresent()) {
                 throw new RuntimeException("Username is already taken");
+            }
+
+            if (usersRepository.findByPhoneNumber(registerRequest.getPhoneNumber()).isPresent()) {
+                throw new RuntimeException("Phone number is already in use");
             }
 
             // Buat user
@@ -334,13 +337,29 @@ public class UsersService {
     }
 
     private String generateAccountNumber() {
-        StringBuilder accountNumber = new StringBuilder();
-        accountNumber.append(ThreadLocalRandom.current().nextInt(1, 10));
-        for (int i = 1; i < 10; i++) {
-            accountNumber.append(ThreadLocalRandom.current().nextInt(0, 10));
-        }
-        return accountNumber.toString();
+        int maxRetries = 5; // Biar aman, maksimal 5x coba generate
+        int attempts = 0;
+        String accountNumber;
+
+        do {
+            StringBuilder builder = new StringBuilder();
+            builder.append("7"); // Awal angka 7
+
+            for (int i = 1; i < 10; i++) { // Total 10 digit
+                builder.append(ThreadLocalRandom.current().nextInt(0, 10));
+            }
+
+            accountNumber = builder.toString();
+            attempts++;
+
+            if (attempts > maxRetries) {
+                throw new RuntimeException("Failed to generate a unique account number after multiple attempts");
+            }
+        } while (walletsRepository.findByAccountNumber(accountNumber).isPresent());
+
+        return accountNumber;
     }
+
     private boolean isNull(String value) {
         return value == null || value.trim().isEmpty();
     }

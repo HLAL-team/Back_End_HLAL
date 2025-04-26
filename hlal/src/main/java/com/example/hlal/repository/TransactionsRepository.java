@@ -15,4 +15,5 @@ public interface TransactionsRepository extends JpaRepository<Transactions, Long
     List<Transactions> findByWalletId(Long walletId);
     List<Transactions> findByRecipientWalletId(Long recipientWalletId);
     List<Transactions> findByTransactionTypeId(Long transactionTypeId);
+    List<Transactions> findByRecipientWalletIdAndTransactionDateBetween(Long recipientWalletId, LocalDateTime start, LocalDateTime end);
 }

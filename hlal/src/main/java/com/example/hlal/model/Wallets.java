@@ -24,7 +24,7 @@ public class Wallets {
     @JoinColumn(name = "user_id", unique = true)
     private Users users; //foreign key untuk users OnetoOne
 
-    @Column(name = "account_number", nullable = false, length = 10)
+    @Column(name = "account_number", nullable = false, length = 10, unique = true)
     private String accountNumber;
 
     @Column(name = "balance", nullable = false, precision = 12, scale = 2)

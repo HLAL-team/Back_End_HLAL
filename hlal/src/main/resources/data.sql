@@ -2,6 +2,9 @@
 TRUNCATE TABLE transaction_type RESTART IDENTITY CASCADE;
 TRUNCATE TABLE top_up_method RESTART IDENTITY CASCADE;
 
+--Set semua balance di tabel wallets jadi 0
+UPDATE wallets SET balance = 0;
+
 -- Isi data untuk transaction_type
 INSERT INTO transaction_type (id, name) VALUES
 (1, 'Top Up'),

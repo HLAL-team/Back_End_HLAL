@@ -60,13 +60,19 @@ public class TransactionsService {
 
             senderWallet.setBalance(senderWallet.getBalance().add(request.getAmount()));
             walletsRepository.save(senderWallet);
-        } else if (transactionType.getId() == 2) { // TRANSFER
-            if (request.getRecipientAccountNumber() == null) {
-                throw new RuntimeException("Recipient account number is required for transfer transactions");
-            }
 
-            Wallets recipientWallet = walletsRepository.findByAccountNumber(request.getRecipientAccountNumber())
-                    .orElseThrow(() -> new RuntimeException("Recipient wallet not found"));
+        } else if (transactionType.getId() == 2) { // TRANSFER
+            Wallets recipientWallet = null;
+
+            if (request.getRecipientAccountNumber() != null && !request.getRecipientAccountNumber().isEmpty()) {
+                recipientWallet = walletsRepository.findByAccountNumber(request.getRecipientAccountNumber())
+                        .orElseThrow(() -> new RuntimeException("Recipient wallet not found with account number"));
+            } else if (request.getRecipientPhoneNumber() != null && !request.getRecipientPhoneNumber().isEmpty()) {
+                recipientWallet = walletsRepository.findByUsersPhoneNumber(request.getRecipientPhoneNumber())
+                        .orElseThrow(() -> new RuntimeException("Recipient wallet not found with phone number"));
+            } else {
+                throw new RuntimeException("Recipient account number or phone number is required for transfer transactions");
+            }
 
             if (recipientWallet.getId().equals(senderWallet.getId())) {
                 throw new RuntimeException("You can't transfer to your own wallet");
@@ -83,6 +89,7 @@ public class TransactionsService {
             recipientWallet.setBalance(recipientWallet.getBalance().add(request.getAmount()));
             walletsRepository.save(senderWallet);
             walletsRepository.save(recipientWallet);
+
         } else {
             throw new RuntimeException("Unsupported transaction type");
         }
@@ -107,7 +114,6 @@ public class TransactionsService {
         return response;
     }
 
-
     public Map<String, Object> getMyTransactions(
             String search,
             String sortBy,
@@ -121,9 +127,14 @@ public class TransactionsService {
         Wallets wallet = walletsRepository.findByUsersEmail(userEmail)
                 .orElseThrow(() -> new RuntimeException("Wallet not found"));
 
-        List<Transactions> transactions = transactionsRepository.findByWalletId(wallet.getId());
+        List<Transactions> sentTransactions = transactionsRepository.findByWalletId(wallet.getId());
+        List<Transactions> receivedTransactions = transactionsRepository.findByRecipientWalletId(wallet.getId());
 
-        List<TransactionsResponse> filtered = transactions.stream()
+        List<Transactions> allTransactions = new ArrayList<>();
+        allTransactions.addAll(sentTransactions);
+        allTransactions.addAll(receivedTransactions);
+
+        List<TransactionsResponse> filtered = allTransactions.stream()
                 .filter(tx -> {
                     if (search == null || search.isEmpty()) return true;
                     return tx.getDescription().toLowerCase().contains(search.toLowerCase()) ||
@@ -155,9 +166,23 @@ public class TransactionsService {
                     "code", 404,
                     "message", "No data found",
                     "totalData", 0,
+                    "totalIncome", BigDecimal.ZERO,
+                    "totalOutcome", BigDecimal.ZERO,
                     "data", Collections.emptyList()
             );
         }
+
+        // Calculate totalIncome and totalOutcome
+        BigDecimal totalIncome = allTransactions.stream()
+                .filter(tx -> (tx.getRecipientWallet() != null && tx.getRecipientWallet().getId().equals(wallet.getId()))
+                        || (tx.getTransactionType().getId() == 1))
+                .map(Transactions::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal totalOutcome = allTransactions.stream()
+                .filter(tx -> tx.getWallet().getId().equals(wallet.getId()) && tx.getTransactionType().getId() != 1)
+                .map(Transactions::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         int totalData = filtered.size();
         int fromIndex = Math.min((page - 1) * limit, totalData);
@@ -169,6 +194,8 @@ public class TransactionsService {
                 "code", 200,
                 "message", "Data retrieved successfully",
                 "totalData", totalData,
+                "totalIncome", totalIncome,
+                "totalOutcome", totalOutcome,
                 "data", paginated
         );
     }
@@ -181,8 +208,8 @@ public class TransactionsService {
             Integer quarter,
             Integer startYear,
             Integer endYear,
-            HttpServletRequest httpRequest
-    ) {
+            HttpServletRequest httpRequest) {
+
         Map<String, Object> response = new LinkedHashMap<>();
         try {
             String jwt = jwtService.extractToken(httpRequest);
@@ -202,7 +229,6 @@ public class TransactionsService {
                     start = weekStart.atStartOfDay();
                     end = start.plusDays(6).withHour(23).withMinute(59).withSecond(59);
                     break;
-
                 case "weekly":
                     if (month == null || year == null)
                         throw new IllegalArgumentException("Month and year are required for weekly filter");
@@ -210,53 +236,54 @@ public class TransactionsService {
                     start = first.with(DayOfWeek.MONDAY).atStartOfDay();
                     end = first.plusMonths(1).minusDays(1).with(DayOfWeek.SUNDAY).atTime(23, 59, 59);
                     break;
-
                 case "monthly":
                     if (year == null)
                         throw new IllegalArgumentException("Year is required for monthly filter");
                     start = LocalDateTime.of(year, 1, 1, 0, 0);
                     end = LocalDateTime.of(year, 12, 31, 23, 59, 59);
                     break;
-
                 case "quarterly":
                     if (year == null)
                         throw new IllegalArgumentException("Year is required for quarterly filter");
                     start = LocalDateTime.of(year, 1, 1, 0, 0);
                     end = LocalDateTime.of(year, 12, 31, 23, 59, 59);
                     break;
-
                 case "yearly":
                     if (startYear == null || endYear == null)
                         throw new IllegalArgumentException("Start year and end year are required for yearly filter");
                     start = LocalDateTime.of(startYear, 1, 1, 0, 0);
                     end = LocalDateTime.of(endYear, 12, 31, 23, 59, 59);
                     break;
-
                 default:
                     throw new IllegalArgumentException("Invalid type: must be 'daily', 'weekly', 'monthly', 'quarterly', or 'yearly'");
             }
 
-            List<Transactions> transactions = transactionsRepository.findByWalletIdAndTransactionDateBetween(wallet.getId(), start, end);
+            List<Transactions> sentTransactions = transactionsRepository.findByWalletIdAndTransactionDateBetween(wallet.getId(), start, end);
+            List<Transactions> receivedTransactions = transactionsRepository.findByRecipientWalletIdAndTransactionDateBetween(wallet.getId(), start, end);
 
-            if (transactions.isEmpty()) {
-                return Map.of(
-                        "status", false,
-                        "code", 404,
-                        "message", "No data found"
-                );
+            List<Transactions> allTransactions = new ArrayList<>();
+            allTransactions.addAll(sentTransactions);
+            allTransactions.addAll(receivedTransactions);
+
+            if (allTransactions.isEmpty()) {
+                response.put("status", false);
+                response.put("code", 404);
+                response.put("message", "No data found");
+                return response;
             }
 
-            BigDecimal totalIncome = transactions.stream()
-                    .filter(tx -> tx.getTransactionType().getId() == 1)
+            BigDecimal totalIncome = allTransactions.stream()
+                    .filter(tx -> (tx.getRecipientWallet() != null && tx.getRecipientWallet().getId().equals(wallet.getId()))
+                            || (tx.getTransactionType().getId() == 1))
                     .map(Transactions::getAmount)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-            BigDecimal totalOutcome = transactions.stream()
-                    .filter(tx -> tx.getTransactionType().getId() == 2)
+            BigDecimal totalOutcome = allTransactions.stream()
+                    .filter(tx -> tx.getWallet().getId().equals(wallet.getId()) && tx.getTransactionType().getId() != 1)
                     .map(Transactions::getAmount)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-            List<TransactionsResponse> responseList = transactions.stream().map(tx -> {
+            List<TransactionsResponse> responseList = allTransactions.stream().map(tx -> {
                 TransactionsResponse res = new TransactionsResponse();
                 res.setTransactionId(tx.getId());
                 res.setTransactionType(tx.getTransactionType().getName());
@@ -285,6 +312,7 @@ public class TransactionsService {
             return response;
         }
     }
+
 
     public FavoriteAccountResponse addFavoriteAccount(FavoriteAccountRequest request, HttpServletRequest httpRequest) {
         try {

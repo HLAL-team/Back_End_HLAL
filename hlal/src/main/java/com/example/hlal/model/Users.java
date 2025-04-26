@@ -59,7 +59,7 @@ public class Users implements UserDetails {
     @Column(name = "password", nullable = false, columnDefinition = "TEXT")
     private String password;
 
-    @Column(name = "phone_number", nullable = false, length = 15)
+    @Column(name = "phone_number", nullable = false, length = 15, unique = true)
     private String phoneNumber;
 
     @Column(name = "avatar_url", columnDefinition = "TEXT")
