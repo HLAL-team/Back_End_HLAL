@@ -86,7 +86,6 @@ public class UsersService {
                 throw new RuntimeException("Password must be at least 8 characters long and include uppercase, lowercase, number, and special character");
             }
 
-
             if (usersRepository.findByEmail(registerRequest.getEmail()).isPresent()) {
                 throw new RuntimeException("Email is already in use");
             }
@@ -155,7 +154,8 @@ public class UsersService {
             boolean isPasswordUpdated = false;
             boolean isAvatarUpdated = false;
 
-            if (request.getUsername() != null && !request.getUsername().equals(user.getUsername())) {
+            // Update username
+            if (request.getUsername() != null && !request.getUsername().isEmpty()) {
                 if (!isValidUsername(request.getUsername())) {
                     response.setStatus("Error");
                     response.setMessage("Invalid username format");
@@ -164,7 +164,16 @@ public class UsersService {
                     return response;
                 }
 
-                if (usersRepository.findByUsername(request.getUsername()).isPresent()) {
+                if (request.getUsername().equals(user.getUsername())) {
+                    response.setStatus("Error");
+                    response.setMessage("New username must be different from the current username");
+                    response.setUsername(user.getUsername());
+                    response.setAvatarUrl(user.getAvatarUrl());
+                    return response;
+                }
+
+                Optional<Users> existingUser = usersRepository.findByUsername(request.getUsername());
+                if (existingUser.isPresent() && !existingUser.get().getId().equals(user.getId())) {
                     response.setStatus("Error");
                     response.setMessage("Username is already taken");
                     response.setUsername(user.getUsername());
@@ -176,6 +185,7 @@ public class UsersService {
                 isUsernameUpdated = true;
             }
 
+            // Update password
             if (request.getPassword() != null && !request.getPassword().isEmpty()) {
                 if (!isValidPassword(request.getPassword())) {
                     response.setStatus("Error");
@@ -185,18 +195,19 @@ public class UsersService {
                     return response;
                 }
 
-                if (!BCrypt.checkpw(request.getPassword(), user.getPassword())) {
-                    user.setPassword(passwordEncoder.encode(request.getPassword()));
-                    isPasswordUpdated = true;
-                } else {
+                if (BCrypt.checkpw(request.getPassword(), user.getPassword())) {
                     response.setStatus("Error");
                     response.setMessage("New password must be different from the current password");
                     response.setUsername(user.getUsername());
                     response.setAvatarUrl(user.getAvatarUrl());
                     return response;
                 }
+
+                user.setPassword(passwordEncoder.encode(request.getPassword()));
+                isPasswordUpdated = true;
             }
 
+            // Update avatar
             MultipartFile avatarFile = request.getAvatar();
             if (avatarFile != null && !avatarFile.isEmpty()) {
                 String uploadDir = "src/main/resources/static/uploads/";
@@ -220,6 +231,7 @@ public class UsersService {
                 walletsRepository.save(wallet);
             });
 
+            // Build response message
             StringBuilder messageBuilder = new StringBuilder("Profile updated successfully");
             if (isUsernameUpdated) messageBuilder.append(", username updated");
             if (isPasswordUpdated) messageBuilder.append(", password updated");
@@ -245,6 +257,7 @@ public class UsersService {
             return response;
         }
     }
+
     public LoginResponse login(LoginRequest loginRequest) {
         LoginResponse response = new LoginResponse();
         try {
@@ -271,10 +284,6 @@ public class UsersService {
             Users user = optionalUser.get();
 
             boolean isPasswordMatch = BCrypt.checkpw(loginRequest.getPassword(), user.getPassword());
-            if(isNull(loginRequest.getPassword())){
-                throw new RuntimeException("Field Password cannot be empty");
-            }
-
             if (!isPasswordMatch) {
                 throw new RuntimeException("Wrong password");
             }

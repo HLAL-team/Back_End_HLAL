@@ -61,11 +61,11 @@ public class TransactionsService {
             senderWallet.setBalance(senderWallet.getBalance().add(request.getAmount()));
             walletsRepository.save(senderWallet);
         } else if (transactionType.getId() == 2) { // TRANSFER
-            if (request.getRecipientWalletId() == null) {
-                throw new RuntimeException("Recipient wallet is required for transfer transactions");
+            if (request.getRecipientAccountNumber() == null) {
+                throw new RuntimeException("Recipient account number is required for transfer transactions");
             }
 
-            Wallets recipientWallet = walletsRepository.findById(request.getRecipientWalletId())
+            Wallets recipientWallet = walletsRepository.findByAccountNumber(request.getRecipientAccountNumber())
                     .orElseThrow(() -> new RuntimeException("Recipient wallet not found"));
 
             if (recipientWallet.getId().equals(senderWallet.getId())) {
@@ -107,6 +107,7 @@ public class TransactionsService {
         return response;
     }
 
+
     public Map<String, Object> getMyTransactions(
             String search,
             String sortBy,
@@ -139,7 +140,7 @@ public class TransactionsService {
                     res.setRecipient(tx.getRecipientWallet() != null ? tx.getRecipientWallet().getUsers().getFullname() : null);
                     res.setDescription(tx.getDescription());
                     res.setTransactionDate(tx.getTransactionDate());
-                    res.setTransactionDateFormatted(tx.getTransactionDate().format(DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm")));
+                    res.setTransactionDateFormatted(tx.getTransactionDate().format(DateTimeFormatter.ofPattern("dd MMMM yyyy HH:mm")));
                     return res;
                 })
                 .collect(Collectors.toList());
@@ -171,84 +172,6 @@ public class TransactionsService {
                 "data", paginated
         );
     }
-
-//    public Map<String, Object> getTransactionsByTimeRange(String type, Integer year, Integer month, Integer week, Integer quarter, HttpServletRequest httpRequest) {
-//        String jwt = jwtService.extractToken(httpRequest);
-//        String userEmail = jwtService.extractUsername(jwt);
-//        Wallets wallet = walletsRepository.findByUsersEmail(userEmail)
-//                .orElseThrow(() -> new RuntimeException("Wallet not found"));
-//
-//        LocalDateTime start, end;
-//
-//        switch (type.toLowerCase()) {
-//            case "month":
-//                if (month == null || year == null)
-//                    throw new IllegalArgumentException("Month and year are required");
-//                start = LocalDateTime.of(year, month, 1, 0, 0);
-//                end = start.withDayOfMonth(start.toLocalDate().lengthOfMonth()).withHour(23).withMinute(59).withSecond(59);
-//                break;
-//            case "week":
-//                if (week == null || month == null || year == null)
-//                    throw new IllegalArgumentException("Week, month, and year are required");
-//                LocalDate firstDayOfMonth = LocalDate.of(year, month, 1);
-//                LocalDate firstWeekStart = firstDayOfMonth.with(DayOfWeek.MONDAY);
-//                start = firstWeekStart.plusWeeks(week - 1).atStartOfDay();
-//                end = start.plusDays(6).withHour(23).withMinute(59).withSecond(59);
-//                break;
-//            case "quarter":
-//                if (quarter == null || year == null)
-//                    throw new IllegalArgumentException("Quarter and year are required");
-//                int startMonth = (quarter - 1) * 3 + 1;
-//                start = LocalDateTime.of(year, startMonth, 1, 0, 0);
-//                end = start.plusMonths(2).withDayOfMonth(start.plusMonths(2).toLocalDate().lengthOfMonth()).withHour(23).withMinute(59).withSecond(59);
-//                break;
-//            default:
-//                throw new IllegalArgumentException("Invalid type: must be 'month', 'week', or 'quarter'");
-//        }
-//
-//        List<Transactions> transactions = transactionsRepository.findByWalletIdAndTransactionDateBetween(wallet.getId(), start, end);
-//
-//        if (transactions.isEmpty()) {
-//            return Map.of(
-//                    "status", false,
-//                    "code", 404,
-//                    "message", "No data found"
-//            );
-//        }
-//
-//        BigDecimal totalIncome = transactions.stream()
-//                .filter(tx -> tx.getTransactionType().getId() == 1)
-//                .map(Transactions::getAmount)
-//                .reduce(BigDecimal.ZERO, BigDecimal::add);
-//
-//        BigDecimal totalOutcome = transactions.stream()
-//                .filter(tx -> tx.getTransactionType().getId() == 2)
-//                .map(Transactions::getAmount)
-//                .reduce(BigDecimal.ZERO, BigDecimal::add);
-//
-//        List<TransactionsResponse> responseList = transactions.stream().map(tx -> {
-//            TransactionsResponse res = new TransactionsResponse();
-//            res.setTransactionId(tx.getId());
-//            res.setTransactionType(tx.getTransactionType().getName());
-//            res.setAmount(tx.getAmount());
-//            res.setSender(tx.getWallet().getUsers().getFullname());
-//            res.setRecipient(tx.getRecipientWallet() != null ? tx.getRecipientWallet().getUsers().getFullname() : null);
-//            res.setDescription(tx.getDescription());
-//            res.setTransactionDate(tx.getTransactionDate());
-//            res.setTransactionDateFormatted(tx.getTransactionDate().format(DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm")));
-//            return res;
-//        }).collect(Collectors.toList());
-//
-//        return Map.of(
-//                "status", true,
-//                "code", 200,
-//                "message", "Data retrieved successfully",
-//                "totalData", responseList.size(),
-//                "totalIncome", totalIncome,
-//                "totalOutcome", totalOutcome,
-//                "data", responseList
-//        );
-//    }
 
     public Map<String, Object> getTransactionsByTimeRange(
             String type,
@@ -342,7 +265,7 @@ public class TransactionsService {
                 res.setRecipient(tx.getRecipientWallet() != null ? tx.getRecipientWallet().getUsers().getFullname() : null);
                 res.setDescription(tx.getDescription());
                 res.setTransactionDate(tx.getTransactionDate());
-                res.setTransactionDateFormatted(tx.getTransactionDate().format(DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm")));
+                res.setTransactionDateFormatted(tx.getTransactionDate().format(DateTimeFormatter.ofPattern("dd MMMM yyyy HH:mm")));
                 return res;
             }).collect(Collectors.toList());
 

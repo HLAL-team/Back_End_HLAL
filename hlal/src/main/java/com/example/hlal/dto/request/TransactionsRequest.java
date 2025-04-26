@@ -6,7 +6,7 @@ import java.math.BigDecimal;
 @Data
 public class TransactionsRequest {
     private Long senderWalletId;
-    private Long recipientWalletId;
+    private String recipientAccountNumber;
     private Long transactionTypeId;
     private BigDecimal amount;
     private String description;
