@@ -167,7 +167,7 @@ public class TransactionsController {
 
         try {
             transactionsService.deleteFavoriteAccount(favoriteAccountNumber, httpRequest);
-            
+
             response.put("status", true);
             response.put("code", 200);
             response.put("message", "Favorite account deleted successfully");

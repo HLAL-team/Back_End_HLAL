@@ -48,25 +48,44 @@ public class UsersService {
         RegisterResponse response = new RegisterResponse();
         try {
             // Validasi input
+            if(isNull(registerRequest.getEmail())) {
+                throw new RuntimeException("Field Email cannot be empty");
+            }
             if (!isValidEmail(registerRequest.getEmail())) {
                 throw new RuntimeException("Invalid email format");
             }
 
+            if (isNull(registerRequest.getUsername())) {
+                throw new RuntimeException("Field Username cannot be empty");
+            }
             if (!isValidUsername(registerRequest.getUsername())) {
                 throw new RuntimeException("Username must be 5–20 characters and only contain letters, numbers, or underscores");
             }
 
+
+            if (isNull(registerRequest.getFullname())) {
+                throw new RuntimeException("Full Name cannot be empty");
+            }
             if (!isValidFullname(registerRequest.getFullname())) {
                 throw new RuntimeException("Full name must only contain letters, spaces, periods, hyphens, and be up to 70 characters");
             }
 
+
+            if (isNull(registerRequest.getPhoneNumber())) {
+                throw new RuntimeException("Field Phone Number cannot be empty");
+            }
             if (!isValidPhoneNumber(registerRequest.getPhoneNumber())) {
                 throw new RuntimeException("Phone number must be 10–15 digits");
             }
 
+
+            if (isNull(registerRequest.getPassword())) {
+                throw new RuntimeException("Field Password cannot be empty");
+            }
             if (!isValidPassword(registerRequest.getPassword())) {
                 throw new RuntimeException("Password must be at least 8 characters long and include uppercase, lowercase, number, and special character");
             }
+
 
             if (usersRepository.findByEmail(registerRequest.getEmail()).isPresent()) {
                 throw new RuntimeException("Email is already in use");
@@ -226,17 +245,15 @@ public class UsersService {
             return response;
         }
     }
-
-<<<<<<< HEAD
-=======
-
->>>>>>> 3aa96c0f8c3c46af2d27807a1599a38b6e80c8c1
     public LoginResponse login(LoginRequest loginRequest) {
         LoginResponse response = new LoginResponse();
         try {
             String usernameOrEmail = loginRequest.getUsernameOrEmail();
             Optional<Users> optionalUser;
 
+            if(isNull(usernameOrEmail)){
+                throw new RuntimeException("Username or email Field cannot be empty");
+            }
             if (usernameOrEmail.contains("@")) {
                 // Email login
                 optionalUser = usersRepository.findByEmail(usernameOrEmail);
@@ -254,6 +271,10 @@ public class UsersService {
             Users user = optionalUser.get();
 
             boolean isPasswordMatch = BCrypt.checkpw(loginRequest.getPassword(), user.getPassword());
+            if(isNull(loginRequest.getPassword())){
+                throw new RuntimeException("Field Password cannot be empty");
+            }
+
             if (!isPasswordMatch) {
                 throw new RuntimeException("Wrong password");
             }
@@ -310,6 +331,9 @@ public class UsersService {
             accountNumber.append(ThreadLocalRandom.current().nextInt(0, 10));
         }
         return accountNumber.toString();
+    }
+    private boolean isNull(String value) {
+        return value == null || value.trim().isEmpty();
     }
 
     private boolean isValidUsername(String username) {
