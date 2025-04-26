@@ -1,5 +1,6 @@
 package com.example.hlal.controller;
 
+import com.example.hlal.dto.request.*;
 import com.example.hlal.dto.request.FavoriteAccountRequest;
 import com.example.hlal.dto.request.TransactionsRequest;
 import com.example.hlal.dto.response.FavoriteAccountResponse;
@@ -159,14 +160,14 @@ public class TransactionsController {
 
     @DeleteMapping("/favorite")
     public ResponseEntity<Map<String, Object>> deleteFavoriteAccount(
-            @RequestParam Long favoriteUserId,
+            @RequestParam String favoriteAccountNumber,
             HttpServletRequest httpRequest
     ) {
         Map<String, Object> response = new LinkedHashMap<>();
 
         try {
-            transactionsService.deleteFavoriteAccount(favoriteUserId, httpRequest);
-
+            transactionsService.deleteFavoriteAccount(favoriteAccountNumber, httpRequest);
+            
             response.put("status", true);
             response.put("code", 200);
             response.put("message", "Favorite account deleted successfully");

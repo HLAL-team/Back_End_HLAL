@@ -4,5 +4,5 @@ import lombok.Data;
 
 @Data
 public class FavoriteAccountRequest {
-    private Long favoriteUserId;
+    private String favoriteAccountNumber;
 }

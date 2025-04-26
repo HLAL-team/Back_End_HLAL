@@ -14,5 +14,4 @@ INSERT INTO top_up_method (id, name) VALUES
 (3, 'Debit Card'),
 (4, 'Retail / Outlet'),
 (5, 'Mobile Banking'),
-(6, 'Internet Banking'),
-(7, 'Payroll');
+(6, 'Internet Banking');

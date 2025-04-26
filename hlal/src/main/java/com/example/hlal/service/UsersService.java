@@ -6,6 +6,7 @@ import com.example.hlal.dto.request.RegisterRequest;
 import com.example.hlal.dto.response.EditProfileResponse;
 import com.example.hlal.dto.response.LoginResponse;
 import com.example.hlal.dto.response.RegisterResponse;
+import com.example.hlal.dto.response.UserProfileResponse;
 import com.example.hlal.model.Users;
 import com.example.hlal.model.Wallets;
 import com.example.hlal.repository.UsersRepository;
@@ -24,6 +25,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -42,10 +44,10 @@ public class UsersService {
 
     @Autowired
     private final JWTService jwtService;
-
     public RegisterResponse register(RegisterRequest registerRequest) {
         RegisterResponse response = new RegisterResponse();
         try {
+            // Validasi input
             if (!isValidEmail(registerRequest.getEmail())) {
                 throw new RuntimeException("Invalid email format");
             }
@@ -62,8 +64,7 @@ public class UsersService {
                 throw new RuntimeException("Phone number must be 10–15 digits");
             }
 
-            String password = registerRequest.getPassword();
-            if (!isValidPassword(password)) {
+            if (!isValidPassword(registerRequest.getPassword())) {
                 throw new RuntimeException("Password must be at least 8 characters long and include uppercase, lowercase, number, and special character");
             }
 
@@ -75,18 +76,21 @@ public class UsersService {
                 throw new RuntimeException("Username is already taken");
             }
 
+            // Buat user
             Users user = new Users();
             user.setEmail(registerRequest.getEmail());
             user.setUsername(registerRequest.getUsername());
             user.setFullname(registerRequest.getFullname());
             user.setPhoneNumber(registerRequest.getPhoneNumber());
-            user.setPassword(passwordEncoder.encode(password));
-            user.setAvatarUrl(null); // Tidak upload avatar
+            user.setPassword(passwordEncoder.encode(registerRequest.getPassword()));
+            user.setAvatarUrl(null); // Avatar belum diupload
 
             Users savedUser = usersRepository.save(user);
 
+            // Buat wallet
             Wallets wallets = new Wallets();
             wallets.setUsers(savedUser);
+
             String accountNumber;
             do {
                 accountNumber = generateAccountNumber();
@@ -96,20 +100,28 @@ public class UsersService {
             wallets.setBalance(BigDecimal.ZERO);
             wallets.setCreatedAt(LocalDateTime.now());
             wallets.setUpdatedAt(LocalDateTime.now());
+
             walletsRepository.save(wallets);
 
             // Build response
             response.setStatus("Success");
-            response.setMessage("Berhasil Registrasi");
+            response.setMessage("Registration successful");
             response.setEmail(savedUser.getEmail());
             response.setFullname(savedUser.getFullname());
             response.setUsername(savedUser.getUsername());
             response.setPhoneNumber(savedUser.getPhoneNumber());
             response.setAvatarUrl(null);
+            response.setAccountNumber(wallets.getAccountNumber());
+            response.setBalance(wallets.getBalance());
+            response.setCreatedAt(wallets.getCreatedAt());
+            response.setUpdatedAt(wallets.getUpdatedAt());
 
             return response;
+
         } catch (Exception e) {
-            throw new RuntimeException("Registration failed: " + e.getMessage(), e);
+            response.setStatus("Error");
+            response.setMessage("Registration failed: " + e.getMessage());
+            return response;
         }
     }
 
@@ -182,6 +194,13 @@ public class UsersService {
 
             usersRepository.save(user);
 
+            // Update updatedAt pada wallet
+            Optional<Wallets> optionalWallet = walletsRepository.findByUsers(user);
+            optionalWallet.ifPresent(wallet -> {
+                wallet.setUpdatedAt(LocalDateTime.now());
+                walletsRepository.save(wallet);
+            });
+
             StringBuilder messageBuilder = new StringBuilder("Profile updated successfully");
             if (isUsernameUpdated) messageBuilder.append(", username updated");
             if (isPasswordUpdated) messageBuilder.append(", password updated");
@@ -208,15 +227,32 @@ public class UsersService {
         }
     }
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> 3aa96c0f8c3c46af2d27807a1599a38b6e80c8c1
     public LoginResponse login(LoginRequest loginRequest) {
         LoginResponse response = new LoginResponse();
         try {
-            Optional<Users> optionalUser = usersRepository.findByEmail(loginRequest.getEmail());
-            if (optionalUser.isEmpty()) {
-                throw new RuntimeException("Wrong email");
+            String usernameOrEmail = loginRequest.getUsernameOrEmail();
+            Optional<Users> optionalUser;
+
+            if (usernameOrEmail.contains("@")) {
+                // Email login
+                optionalUser = usersRepository.findByEmail(usernameOrEmail);
+                if (optionalUser.isEmpty()) {
+                    throw new RuntimeException("Wrong email");
+                }
+            } else {
+                // Username login
+                optionalUser = usersRepository.findByUsername(usernameOrEmail);
+                if (optionalUser.isEmpty()) {
+                    throw new RuntimeException("Wrong username");
+                }
             }
 
             Users user = optionalUser.get();
+
             boolean isPasswordMatch = BCrypt.checkpw(loginRequest.getPassword(), user.getPassword());
             if (!isPasswordMatch) {
                 throw new RuntimeException("Wrong password");
@@ -225,15 +261,47 @@ public class UsersService {
             String token = jwtService.generateToken(user.getEmail());
 
             response.setStatus("Success");
-            response.setMessage("Berhasil Login");
+            response.setMessage("Login successful");
             response.setToken(token);
             return response;
+
         } catch (Exception e) {
             throw new RuntimeException("Login failed: " + e.getMessage(), e);
         }
     }
 
+    public UserProfileResponse getProfile(String token) {
+        try {
+            String email = jwtService.extractUsername(token);
+            Users user = usersRepository.findByEmail(email)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
 
+            Wallets wallet = walletsRepository.findByUsers(user)
+                    .orElseThrow(() -> new RuntimeException("Wallet not found"));
+
+            // Format date to a specific pattern
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd MMMM yyyy HH:mm");
+
+            // Format the createdAt and updatedAt dates
+            String formattedCreatedAt = wallet.getCreatedAt().format(formatter);
+            String formattedUpdatedAt = wallet.getUpdatedAt().format(formatter);
+
+            UserProfileResponse profile = new UserProfileResponse();
+            profile.setFullname(user.getFullname());
+            profile.setUsername(user.getUsername());
+            profile.setEmail(user.getEmail());
+            profile.setPhoneNumber(user.getPhoneNumber());
+            profile.setAvatarUrl(user.getAvatarUrl());
+            profile.setAccountNumber(wallet.getAccountNumber());
+            profile.setBalance(wallet.getBalance());
+            profile.setCreatedAt(formattedCreatedAt);  // Set the formatted date
+            profile.setUpdatedAt(formattedUpdatedAt);  // Set the formatted date
+
+            return profile;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to get profile: " + e.getMessage(), e);
+        }
+    }
 
     private String generateAccountNumber() {
         StringBuilder accountNumber = new StringBuilder();
