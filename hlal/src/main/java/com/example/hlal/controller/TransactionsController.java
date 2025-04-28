@@ -60,7 +60,7 @@ public class TransactionsController {
             @RequestParam(defaultValue = "transactionDate") String sortBy,
             @RequestParam(defaultValue = "desc") String order,
             @RequestParam(defaultValue = "1") int page,
-            @RequestParam(required = false) int size,
+            @RequestParam(defaultValue = "1000") int size,
             HttpServletRequest httpRequest
     ) {
         try {
