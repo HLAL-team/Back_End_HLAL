@@ -17,6 +17,7 @@ import org.springframework.security.crypto.bcrypt.BCrypt;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -147,9 +148,126 @@ public class UsersService {
     }
 
 
+//    public EditProfileResponse editProfile(String email, EditProfileRequest request) {
+//        EditProfileResponse response = new EditProfileResponse();
+//        try {
+//            Users user = usersRepository.findByEmail(email)
+//                    .orElseThrow(() -> new RuntimeException("User not found"));
+//
+//            boolean isUsernameUpdated = false;
+//            boolean isPasswordUpdated = false;
+//            boolean isAvatarUpdated = false;
+//
+//            // Update username
+//            if (request.getUsername() != null && !request.getUsername().isEmpty()) {
+//                if (!isValidUsername(request.getUsername())) {
+//                    response.setStatus("Error");
+//                    response.setMessage("Invalid username format");
+//                    response.setUsername(user.getUsername());
+//                    response.setAvatarUrl(user.getAvatarUrl());
+//                    return response;
+//                }
+//
+//                if (request.getUsername().equals(user.getUsername())) {
+//                    response.setStatus("Error");
+//                    response.setMessage("New username must be different from the current username");
+//                    response.setUsername(user.getUsername());
+//                    response.setAvatarUrl(user.getAvatarUrl());
+//                    return response;
+//                }
+//
+//                Optional<Users> existingUser = usersRepository.findByUsername(request.getUsername());
+//                if (existingUser.isPresent() && !existingUser.get().getId().equals(user.getId())) {
+//                    response.setStatus("Error");
+//                    response.setMessage("Username is already taken");
+//                    response.setUsername(user.getUsername());
+//                    response.setAvatarUrl(user.getAvatarUrl());
+//                    return response;
+//                }
+//
+//                user.setUsername(request.getUsername());
+//                isUsernameUpdated = true;
+//            }
+//
+//            // Update password
+//            if (request.getPassword() != null && !request.getPassword().isEmpty()) {
+//                if (!isValidPassword(request.getPassword())) {
+//                    response.setStatus("Error");
+//                    response.setMessage("Password must be at least 8 characters and include uppercase, lowercase, digit, and special character");
+//                    response.setUsername(user.getUsername());
+//                    response.setAvatarUrl(user.getAvatarUrl());
+//                    return response;
+//                }
+//
+//                if (BCrypt.checkpw(request.getPassword(), user.getPassword())) {
+//                    response.setStatus("Error");
+//                    response.setMessage("New password must be different from the current password");
+//                    response.setUsername(user.getUsername());
+//                    response.setAvatarUrl(user.getAvatarUrl());
+//                    return response;
+//                }
+//
+//                user.setPassword(passwordEncoder.encode(request.getPassword()));
+//                isPasswordUpdated = true;
+//            }
+//
+//            // Update avatar
+//            MultipartFile avatarFile = request.getAvatar();
+//            if (avatarFile != null && !avatarFile.isEmpty()) {
+//                String uploadDir = "src/main/resources/static/uploads/";
+//                String originalFilename = avatarFile.getOriginalFilename();
+//                String fileName = System.currentTimeMillis() + "_" + originalFilename;
+//                Path filePath = Paths.get(uploadDir + fileName);
+//
+//                Files.createDirectories(filePath.getParent());
+//                Files.copy(avatarFile.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+//
+//                user.setAvatarUrl("/uploads/" + fileName);
+//                isAvatarUpdated = true;
+//            }
+//
+//            usersRepository.save(user);
+//
+//            // Update updatedAt pada wallet
+//            Optional<Wallets> optionalWallet = walletsRepository.findByUsers(user);
+//            optionalWallet.ifPresent(wallet -> {
+//                wallet.setUpdatedAt(LocalDateTime.now());
+//                walletsRepository.save(wallet);
+//            });
+//
+//            // Build response message
+//            StringBuilder messageBuilder = new StringBuilder("Profile updated successfully");
+//            if (isUsernameUpdated) messageBuilder.append(", username updated");
+//            if (isPasswordUpdated) messageBuilder.append(", password updated");
+//            if (isAvatarUpdated) messageBuilder.append(", avatar updated");
+//
+//            response.setStatus("Success");
+//            response.setMessage(messageBuilder.toString());
+//            response.setAvatarUrl(user.getAvatarUrl());
+//            response.setUsername(user.getUsername());
+//            return response;
+//
+//        } catch (IOException e) {
+//            response.setStatus("Error");
+//            response.setMessage("Failed to upload avatar");
+//            response.setUsername(null);
+//            response.setAvatarUrl(null);
+//            return response;
+//        } catch (Exception e) {
+//            response.setStatus("Error");
+//            response.setMessage("Profile update failed: " + e.getMessage());
+//            response.setUsername(null);
+//            response.setAvatarUrl(null);
+//            return response;
+//        }
+//    }
+
     public EditProfileResponse editProfile(String email, EditProfileRequest request) {
         EditProfileResponse response = new EditProfileResponse();
         try {
+            // Base URL otomatis untuk server
+            String baseUrl = ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString();
+
             Users user = usersRepository.findByEmail(email)
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -163,7 +281,7 @@ public class UsersService {
                     response.setStatus("Error");
                     response.setMessage("Invalid username format");
                     response.setUsername(user.getUsername());
-                    response.setAvatarUrl(user.getAvatarUrl());
+                    response.setAvatarUrl(user.getAvatarUrl() != null ? baseUrl + user.getAvatarUrl() : null);
                     return response;
                 }
 
@@ -171,7 +289,7 @@ public class UsersService {
                     response.setStatus("Error");
                     response.setMessage("New username must be different from the current username");
                     response.setUsername(user.getUsername());
-                    response.setAvatarUrl(user.getAvatarUrl());
+                    response.setAvatarUrl(user.getAvatarUrl() != null ? baseUrl + user.getAvatarUrl() : null);
                     return response;
                 }
 
@@ -180,7 +298,7 @@ public class UsersService {
                     response.setStatus("Error");
                     response.setMessage("Username is already taken");
                     response.setUsername(user.getUsername());
-                    response.setAvatarUrl(user.getAvatarUrl());
+                    response.setAvatarUrl(user.getAvatarUrl() != null ? baseUrl + user.getAvatarUrl() : null);
                     return response;
                 }
 
@@ -194,7 +312,7 @@ public class UsersService {
                     response.setStatus("Error");
                     response.setMessage("Password must be at least 8 characters and include uppercase, lowercase, digit, and special character");
                     response.setUsername(user.getUsername());
-                    response.setAvatarUrl(user.getAvatarUrl());
+                    response.setAvatarUrl(user.getAvatarUrl() != null ? baseUrl + user.getAvatarUrl() : null);
                     return response;
                 }
 
@@ -202,7 +320,7 @@ public class UsersService {
                     response.setStatus("Error");
                     response.setMessage("New password must be different from the current password");
                     response.setUsername(user.getUsername());
-                    response.setAvatarUrl(user.getAvatarUrl());
+                    response.setAvatarUrl(user.getAvatarUrl() != null ? baseUrl + user.getAvatarUrl() : null);
                     return response;
                 }
 
@@ -213,14 +331,18 @@ public class UsersService {
             // Update avatar
             MultipartFile avatarFile = request.getAvatar();
             if (avatarFile != null && !avatarFile.isEmpty()) {
-                String uploadDir = "src/main/resources/static/uploads/";
+                // Path untuk upload file di root proyek
+                String uploadDir = "uploads/";  // Sekarang di root proyek
                 String originalFilename = avatarFile.getOriginalFilename();
-                String fileName = System.currentTimeMillis() + "_" + originalFilename;
+                String fileExtension = originalFilename.substring(originalFilename.lastIndexOf('.'));
+                String fileName = System.currentTimeMillis() + "_" + user.getId() + fileExtension;
                 Path filePath = Paths.get(uploadDir + fileName);
 
+                // Pastikan foldernya ada
                 Files.createDirectories(filePath.getParent());
                 Files.copy(avatarFile.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
 
+                // Set avatar URL relatif, nanti ditambah base URL
                 user.setAvatarUrl("/uploads/" + fileName);
                 isAvatarUpdated = true;
             }
@@ -242,7 +364,7 @@ public class UsersService {
 
             response.setStatus("Success");
             response.setMessage(messageBuilder.toString());
-            response.setAvatarUrl(user.getAvatarUrl());
+            response.setAvatarUrl(user.getAvatarUrl() != null ? baseUrl + user.getAvatarUrl() : null);
             response.setUsername(user.getUsername());
             return response;
 
@@ -260,6 +382,7 @@ public class UsersService {
             return response;
         }
     }
+
 
     public LoginResponse login(LoginRequest loginRequest) {
         LoginResponse response = new LoginResponse();
