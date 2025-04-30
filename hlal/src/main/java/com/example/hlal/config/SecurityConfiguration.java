@@ -56,7 +56,8 @@ public class SecurityConfiguration {
                             "http://localhost:8081",
                             "http://localhost:3000",
                             "http://localhost:5173",
-                            "https://kelompok2.serverku.org"
+                            "https://kelompok2.serverku.org",
+                            "https://hlal-wallet.vercel.app"
                     ));
                     corsConfig.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
                     corsConfig.setAllowedHeaders(List.of("Authorization", "Content-Type"));

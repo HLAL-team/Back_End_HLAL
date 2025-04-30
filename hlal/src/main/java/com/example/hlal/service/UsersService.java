@@ -13,10 +13,12 @@ import com.example.hlal.repository.UsersRepository;
 import com.example.hlal.repository.WalletsRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.bcrypt.BCrypt;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.io.IOException;
@@ -47,105 +49,99 @@ public class UsersService {
     private final JWTService jwtService;
 
     public RegisterResponse register(RegisterRequest registerRequest) {
-        RegisterResponse response = new RegisterResponse();
-        try {
-            // Validasi input
-            if (isNull(registerRequest.getEmail())) {
-                throw new RuntimeException("Field Email cannot be empty");
-            }
-            if (!isValidEmail(registerRequest.getEmail())) {
-                throw new RuntimeException("Invalid email format");
-            }
-
-            if (isNull(registerRequest.getUsername())) {
-                throw new RuntimeException("Field Username cannot be empty");
-            }
-            if (!isValidUsername(registerRequest.getUsername())) {
-                throw new RuntimeException("Username must be 5–20 characters and only contain letters, numbers, or underscores");
-            }
-
-            if (isNull(registerRequest.getFullname())) {
-                throw new RuntimeException("Full Name cannot be empty");
-            }
-            if (!isValidFullname(registerRequest.getFullname())) {
-                throw new RuntimeException("Full name must only contain letters, spaces, periods, hyphens, and be up to 70 characters");
-            }
-
-            if (isNull(registerRequest.getPhoneNumber())) {
-                throw new RuntimeException("Field Phone Number cannot be empty");
-            }
-            if (!isValidPhoneNumber(registerRequest.getPhoneNumber())) {
-                throw new RuntimeException("Phone number must be 10–15 digits");
-            }
-
-            if (isNull(registerRequest.getPassword())) {
-                throw new RuntimeException("Field Password cannot be empty");
-            }
-            if (!isValidPassword(registerRequest.getPassword())) {
-                throw new RuntimeException("Password must be at least 8 characters long and include uppercase, lowercase, number, and special character");
-            }
-
-            // Cek email, username, dan phone number sudah dipakai atau belum
-            if (usersRepository.findByEmail(registerRequest.getEmail()).isPresent()) {
-                throw new RuntimeException("Email is already in use");
-            }
-
-            if (usersRepository.findByUsername(registerRequest.getUsername()).isPresent()) {
-                throw new RuntimeException("Username is already taken");
-            }
-
-            if (usersRepository.findByPhoneNumber(registerRequest.getPhoneNumber()).isPresent()) {
-                throw new RuntimeException("Phone number is already in use");
-            }
-
-            // Buat user
-            Users user = new Users();
-            user.setEmail(registerRequest.getEmail());
-            user.setUsername(registerRequest.getUsername());
-            user.setFullname(registerRequest.getFullname());
-            user.setPhoneNumber(registerRequest.getPhoneNumber());
-            user.setPassword(passwordEncoder.encode(registerRequest.getPassword()));
-            user.setAvatarUrl(null); // Avatar belum diupload
-
-            Users savedUser = usersRepository.save(user);
-
-            // Buat wallet
-            Wallets wallets = new Wallets();
-            wallets.setUsers(savedUser);
-
-            String accountNumber;
-            do {
-                accountNumber = generateAccountNumber();
-            } while (walletsRepository.findByAccountNumber(accountNumber).isPresent());
-
-            wallets.setAccountNumber(accountNumber);
-            wallets.setBalance(BigDecimal.ZERO);
-            wallets.setCreatedAt(LocalDateTime.now());
-            wallets.setUpdatedAt(LocalDateTime.now());
-
-            walletsRepository.save(wallets);
-
-            // Build response
-            response.setStatus("Success");
-            response.setMessage("Registration successful");
-            response.setEmail(savedUser.getEmail());
-            response.setFullname(savedUser.getFullname());
-            response.setUsername(savedUser.getUsername());
-            response.setPhoneNumber(savedUser.getPhoneNumber());
-            response.setAvatarUrl(null);
-            response.setAccountNumber(wallets.getAccountNumber());
-            response.setBalance(wallets.getBalance());
-            response.setCreatedAt(wallets.getCreatedAt());
-            response.setUpdatedAt(wallets.getUpdatedAt());
-
-            return response;
-
-        } catch (Exception e) {
-            response.setStatus("Error");
-            response.setMessage("Registration failed: " + e.getMessage());
-            return response;
+        // Validasi input
+        if (isNull(registerRequest.getEmail())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Field Email cannot be empty");
         }
+        if (!isValidEmail(registerRequest.getEmail())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid email format");
+        }
+
+        if (isNull(registerRequest.getUsername())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Field Username cannot be empty");
+        }
+        if (!isValidUsername(registerRequest.getUsername())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Username must be 5–20 characters and only contain letters, numbers, or underscores");
+        }
+
+        if (isNull(registerRequest.getFullname())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Full Name cannot be empty");
+        }
+        if (!isValidFullname(registerRequest.getFullname())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Full name must only contain letters, spaces, periods, hyphens, and be up to 70 characters");
+        }
+
+        if (isNull(registerRequest.getPhoneNumber())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Field Phone Number cannot be empty");
+        }
+        if (!isValidPhoneNumber(registerRequest.getPhoneNumber())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Phone number must be 10–15 digits");
+        }
+
+        if (isNull(registerRequest.getPassword())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Field Password cannot be empty");
+        }
+        if (!isValidPassword(registerRequest.getPassword())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Password must be at least 8 characters long and include uppercase, lowercase, number, and special character");
+        }
+
+        // Duplikasi data
+        if (usersRepository.findByEmail(registerRequest.getEmail()).isPresent()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email is already in use");
+        }
+
+        if (usersRepository.findByUsername(registerRequest.getUsername()).isPresent()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Username is already taken");
+        }
+
+        if (usersRepository.findByPhoneNumber(registerRequest.getPhoneNumber()).isPresent()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Phone number is already in use");
+        }
+
+        // Buat user
+        Users user = new Users();
+        user.setEmail(registerRequest.getEmail());
+        user.setUsername(registerRequest.getUsername());
+        user.setFullname(registerRequest.getFullname());
+        user.setPhoneNumber(registerRequest.getPhoneNumber());
+        user.setPassword(passwordEncoder.encode(registerRequest.getPassword()));
+        user.setAvatarUrl(null); // Avatar belum diupload
+
+        Users savedUser = usersRepository.save(user);
+
+        // Buat wallet
+        Wallets wallets = new Wallets();
+        wallets.setUsers(savedUser);
+
+        String accountNumber;
+        do {
+            accountNumber = generateAccountNumber();
+        } while (walletsRepository.findByAccountNumber(accountNumber).isPresent());
+
+        wallets.setAccountNumber(accountNumber);
+        wallets.setBalance(BigDecimal.ZERO);
+        wallets.setCreatedAt(LocalDateTime.now());
+        wallets.setUpdatedAt(LocalDateTime.now());
+
+        walletsRepository.save(wallets);
+
+        // Build response
+        RegisterResponse response = new RegisterResponse();
+        response.setStatus("Success");
+        response.setMessage("Registration successful");
+        response.setEmail(savedUser.getEmail());
+        response.setFullname(savedUser.getFullname());
+        response.setUsername(savedUser.getUsername());
+        response.setPhoneNumber(savedUser.getPhoneNumber());
+        response.setAvatarUrl(null);
+        response.setAccountNumber(wallets.getAccountNumber());
+        response.setBalance(wallets.getBalance());
+        response.setCreatedAt(wallets.getCreatedAt());
+        response.setUpdatedAt(wallets.getUpdatedAt());
+
+        return response;
     }
+
 
     public EditProfileResponse editProfile(String email, EditProfileRequest request) {
         EditProfileResponse response = new EditProfileResponse();
@@ -163,28 +159,16 @@ public class UsersService {
             // Update username
             if (request.getUsername() != null && !request.getUsername().isEmpty()) {
                 if (!isValidUsername(request.getUsername())) {
-                    response.setStatus("Error");
-                    response.setMessage("Invalid username format");
-                    response.setUsername(user.getUsername());
-                    response.setAvatarUrl(user.getAvatarUrl() != null ? baseUrl + user.getAvatarUrl() : null);
-                    return response;
+                    throw new RuntimeException("Invalid username format");
                 }
 
                 if (request.getUsername().equals(user.getUsername())) {
-                    response.setStatus("Error");
-                    response.setMessage("New username must be different from the current username");
-                    response.setUsername(user.getUsername());
-                    response.setAvatarUrl(user.getAvatarUrl() != null ? baseUrl + user.getAvatarUrl() : null);
-                    return response;
+                    throw new RuntimeException("New username must be different from the current username");
                 }
 
                 Optional<Users> existingUser = usersRepository.findByUsername(request.getUsername());
                 if (existingUser.isPresent() && !existingUser.get().getId().equals(user.getId())) {
-                    response.setStatus("Error");
-                    response.setMessage("Username is already taken");
-                    response.setUsername(user.getUsername());
-                    response.setAvatarUrl(user.getAvatarUrl() != null ? baseUrl + user.getAvatarUrl() : null);
-                    return response;
+                    throw new RuntimeException("Username is already taken");
                 }
 
                 user.setUsername(request.getUsername());
@@ -194,19 +178,11 @@ public class UsersService {
             // Update password
             if (request.getPassword() != null && !request.getPassword().isEmpty()) {
                 if (!isValidPassword(request.getPassword())) {
-                    response.setStatus("Error");
-                    response.setMessage("Password must be at least 8 characters and include uppercase, lowercase, digit, and special character");
-                    response.setUsername(user.getUsername());
-                    response.setAvatarUrl(user.getAvatarUrl() != null ? baseUrl + user.getAvatarUrl() : null);
-                    return response;
+                    throw new RuntimeException("Password must be at least 8 characters and include uppercase, lowercase, digit, and special character");
                 }
 
                 if (BCrypt.checkpw(request.getPassword(), user.getPassword())) {
-                    response.setStatus("Error");
-                    response.setMessage("New password must be different from the current password");
-                    response.setUsername(user.getUsername());
-                    response.setAvatarUrl(user.getAvatarUrl() != null ? baseUrl + user.getAvatarUrl() : null);
-                    return response;
+                    throw new RuntimeException("New password must be different from the current password");
                 }
 
                 user.setPassword(passwordEncoder.encode(request.getPassword()));
@@ -217,7 +193,7 @@ public class UsersService {
             MultipartFile avatarFile = request.getAvatar();
             if (avatarFile != null && !avatarFile.isEmpty()) {
                 // Path untuk upload file di root proyek
-                String uploadDir = "uploads/";  // Sekarang di root proyek
+                String uploadDir = "uploads/";
                 String originalFilename = avatarFile.getOriginalFilename();
                 String fileExtension = originalFilename.substring(originalFilename.lastIndexOf('.'));
                 String fileName = System.currentTimeMillis() + "_" + user.getId() + fileExtension;
@@ -227,14 +203,13 @@ public class UsersService {
                 Files.createDirectories(filePath.getParent());
                 Files.copy(avatarFile.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
 
-                // Set avatar URL relatif, nanti ditambah base URL
                 user.setAvatarUrl("/uploads/" + fileName);
                 isAvatarUpdated = true;
             }
 
             usersRepository.save(user);
 
-            // Update updatedAt pada wallet
+            // Update wallet timestamp
             Optional<Wallets> optionalWallet = walletsRepository.findByUsers(user);
             optionalWallet.ifPresent(wallet -> {
                 wallet.setUpdatedAt(LocalDateTime.now());
@@ -249,22 +224,15 @@ public class UsersService {
 
             response.setStatus("Success");
             response.setMessage(messageBuilder.toString());
-            response.setAvatarUrl(user.getAvatarUrl() != null ? baseUrl + user.getAvatarUrl() : null);
             response.setUsername(user.getUsername());
+            response.setAvatarUrl(user.getAvatarUrl() != null ? baseUrl + user.getAvatarUrl() : null);
+
             return response;
 
         } catch (IOException e) {
-            response.setStatus("Error");
-            response.setMessage("Failed to upload avatar");
-            response.setUsername(null);
-            response.setAvatarUrl(null);
-            return response;
+            throw new RuntimeException("Failed to upload avatar", e);
         } catch (Exception e) {
-            response.setStatus("Error");
-            response.setMessage("Profile update failed: " + e.getMessage());
-            response.setUsername(null);
-            response.setAvatarUrl(null);
-            return response;
+            throw new RuntimeException("Profile update failed: " + e.getMessage(), e);
         }
     }
 
@@ -392,4 +360,3 @@ public class UsersService {
         return fullname != null && fullname.matches("^[a-zA-Z\\s.'-]{1,70}$");
     }
 }
-

@@ -16,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Repository;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import javax.swing.text.html.Option;
 import java.util.HashMap;
@@ -36,13 +37,19 @@ public class AuthController {
         try {
             RegisterResponse response = usersService.register(registerRequest);
             return ResponseEntity.ok(response);
+        } catch (ResponseStatusException e) {
+            RegisterResponse errorResponse = new RegisterResponse();
+            errorResponse.setStatus("Error");
+            errorResponse.setMessage(e.getReason());
+            return ResponseEntity.status(e.getStatusCode()).body(errorResponse);
         } catch (Exception e) {
-            RegisterResponse response = new RegisterResponse();
-            response.setStatus("Error");
-            response.setMessage(e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+            RegisterResponse errorResponse = new RegisterResponse();
+            errorResponse.setStatus("Error");
+            errorResponse.setMessage("Registration failed: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
         }
     }
+
 
     @PostMapping("/api/auth/login")
     public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest loginRequest) {
@@ -71,7 +78,6 @@ public class AuthController {
         }
     }
 
-
     @PostMapping(value = "/api/auth/edit-profile", consumes = {"multipart/form-data"})
     public ResponseEntity<EditProfileResponse> editProfile(
             @ModelAttribute EditProfileRequest request,
@@ -83,11 +89,30 @@ public class AuthController {
             EditProfileResponse result = usersService.editProfile(email, request);
             return ResponseEntity.ok(result);
 
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
+            // Handle different exceptions by checking the message
             response.setStatus("Error");
             response.setMessage(e.getMessage());
+            response.setUsername(null);
             response.setAvatarUrl(null);
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+
+            // Set status code based on error type
+            if (e.getMessage().contains("User not found")) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+            } else if (e.getMessage().contains("Username is already taken")) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+            } else if (e.getMessage().contains("Password must be at least 8 characters")) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+            } else {
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+            }
+
+        } catch (Exception e) {
+            response.setStatus("Error");
+            response.setMessage("Profile update failed: " + e.getMessage());
+            response.setUsername(null);
+            response.setAvatarUrl(null);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }
 
